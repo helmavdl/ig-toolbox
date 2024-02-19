@@ -26,3 +26,66 @@ docker run -it --rm -v .:/workspace ghcr.io/bonfhir/ig-toolbox:latest sushi init
 ```
 
 To use the [IG Puslisher](https://confluence.hl7.org/display/FHIR/IG+Publisher+Documentation), you'll need to execute the `./_updatePublisher.sh` script once after the project is generated.
+
+## Usage with VS Code and dev containers
+
+Here is a sample `.devcontainer/devcontainer.json` that can use this image:
+
+```json
+{
+  "name": "FSH in VS Code",
+  "image": "ghcr.io/bonfhir/ig-toolbox:latest",
+  "workspaceMount": "source=${localWorkspaceFolder},destination=/workspace,type=bind,consistency=cached",
+  "workspaceFolder": "/workspace",
+  "remoteUser": "root",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "MITRE-Health.vscode-language-fsh",
+        "jebbs.plantuml"
+      ]
+    }
+  }
+}
+```
+
+And some sample `.vscode/tasks.json` to launch SUSHI and the IG Publisher:
+
+```json
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Run SUSHI",
+      "type": "shell",
+      "command": "sushi .",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "clear": false
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Run IG Publisher",
+      "type": "shell",
+      "command": "./_genonce.sh",
+      "group": {
+        "kind": "build"
+      },
+      "presentation": {
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "clear": false
+      },
+      "problemMatcher": []
+    }
+  ]
+}
+```
