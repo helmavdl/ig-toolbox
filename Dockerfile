@@ -2,8 +2,14 @@ FROM debian:bookworm-slim
 
 # Install OS dependencies
 RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
-    && apt-get -y install --no-install-recommends git openjdk-17-jre ruby-full build-essential zlib1g-dev nodejs npm curl unzip\
+    && apt-get -y install --no-install-recommends locales git openjdk-17-jre ruby-full build-essential zlib1g-dev nodejs npm curl unzip\
     && rm -rf /var/lib/apt/lists/*
+
+# Fix locale issues in various environments
+RUN sed -i '/en_US.UTF-8/s/^# //g' /etc/locale.gen && locale-gen
+ENV LANG en_US.UTF-8  
+ENV LANGUAGE en_US:en  
+ENV LC_ALL en_US.UTF-8
 
 # Install Jekyll
 RUN gem install -N jekyll bundler
@@ -25,7 +31,7 @@ RUN mkdir -p /share/src/hapi-fhir-cli \
 # Install Oh-my-bash
 RUN bash -c "$(curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh)"
 
-# Update the path
+# Update the PATH
 RUN <<EOF cat >> ~/.bashrc
 export PATH="\$PATH:/root/.dotnet/tools:/usr/share/hapi-fhir-cli"
 EOF
