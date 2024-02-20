@@ -33,7 +33,17 @@ To use the [IG Puslisher](https://confluence.hl7.org/display/FHIR/IG+Publisher+D
 
 ## Usage with VS Code and dev containers
 
-Here is a sample `.devcontainer/devcontainer.json` that can use this image:
+You can simply setup a [VS Code dev container setup](https://code.visualstudio.com/docs/devcontainers/containers) in the current directory by running:
+
+```shell
+docker run -it --rm -v .:/workspaces ghcr.io/bonfhir/ig-toolbox:latest add-vscode-files
+```
+
+(Or simply run `add-vscode-files` if you are already in the container).
+
+This will create 2 files:
+
+1. `.devcontainer/devcontainer.json`:
 
 ```json
 {
@@ -51,7 +61,7 @@ Here is a sample `.devcontainer/devcontainer.json` that can use this image:
 }
 ```
 
-And some sample `.vscode/tasks.json` to launch SUSHI and the IG Publisher:
+2. `.vscode/tasks.json` to define tasks tp launch SUSHI and the IG Publisher:
 
 ```json
 {

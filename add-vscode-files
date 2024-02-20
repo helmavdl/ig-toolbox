@@ -1,0 +1,71 @@
+#!/usr/bin/env node
+
+const fs = require("fs");
+
+if (!fs.existsSync(".devcontainer/devcontainer.json")) {
+  fs.mkdirSync(".devcontainer", { recursive: true });
+  fs.writeFileSync(
+    ".devcontainer/devcontainer.json",
+    JSON.stringify(
+      {
+        name: "FSH in VS Code",
+        image: "ghcr.io/bonfhir/ig-toolbox:latest",
+        remoteUser: "root",
+        customizations: {
+          vscode: {
+            extensions: ["MITRE-Health.vscode-language-fsh", "jebbs.plantuml"],
+          },
+        },
+      },
+      undefined,
+      2
+    )
+  );
+}
+
+if (!fs.existsSync(".vscode/tasks.json")) {
+  fs.mkdirSync(".vscode", { recursive: true });
+  fs.writeFileSync(
+    ".vscode/tasks.json",
+    JSON.stringify(
+      {
+        version: "2.0.0",
+        tasks: [
+          {
+            label: "Run SUSHI",
+            type: "shell",
+            command: "sushi .",
+            group: {
+              kind: "build",
+              isDefault: true,
+            },
+            presentation: {
+              reveal: "always",
+              focus: false,
+              panel: "shared",
+              clear: false,
+            },
+            problemMatcher: [],
+          },
+          {
+            label: "Run IG Publisher",
+            type: "shell",
+            command: "./_genonce.sh",
+            group: {
+              kind: "build",
+            },
+            presentation: {
+              reveal: "always",
+              focus: false,
+              panel: "shared",
+              clear: false,
+            },
+            problemMatcher: [],
+          },
+        ],
+      },
+      undefined,
+      2
+    )
+  );
+}
