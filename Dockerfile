@@ -21,7 +21,7 @@ export PATH="\$PATH:/root/.dotnet/tools"
 EOF
 
 # Usability
-RUN mkdir /workspace
-WORKDIR /workspace
+RUN mkdir /workspaces
+WORKDIR /workspaces
 
 CMD [ "/bin/bash" ]

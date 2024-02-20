@@ -14,7 +14,7 @@ It contains:
 ## Usage
 
 ```shell
-docker run -it --rm -v .:/workspace ghcr.io/bonfhir/ig-toolbox:latest
+docker run -it --rm -v .:/workspaces ghcr.io/bonfhir/ig-toolbox:latest
 ```
 
 This will get you a shell where all the tools are available, and the current directory is volume-mounted.
@@ -22,7 +22,7 @@ This will get you a shell where all the tools are available, and the current dir
 To get started with a new sushi project, you can use [`sushi init`](https://fshschool.org/docs/sushi/project/#initializing-a-sushi-project); to use it directly from the docker image simply start with:
 
 ```shell
-docker run -it --rm -v .:/workspace ghcr.io/bonfhir/ig-toolbox:latest sushi init
+docker run -it --rm -v .:/workspaces ghcr.io/bonfhir/ig-toolbox:latest sushi init
 ```
 
 To use the [IG Puslisher](https://confluence.hl7.org/display/FHIR/IG+Publisher+Documentation), you'll need to execute the `./_updatePublisher.sh` script once after the project is generated.
@@ -35,8 +35,6 @@ Here is a sample `.devcontainer/devcontainer.json` that can use this image:
 {
   "name": "FSH in VS Code",
   "image": "ghcr.io/bonfhir/ig-toolbox:latest",
-  "workspaceMount": "source=${localWorkspaceFolder},destination=/workspace,type=bind,consistency=cached",
-  "workspaceFolder": "/workspace",
   "remoteUser": "root",
   "customizations": {
     "vscode": {
