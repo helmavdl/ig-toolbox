@@ -22,6 +22,9 @@ RUN mkdir -p /share/src/hapi-fhir-cli \
     && unzip -q /usr/share/hapi-fhir-cli.zip -d /usr/share/hapi-fhir-cli \
     && rm -f /usr/share/hapi-fhir-cli.zip
 
+# Install Oh-my-bash
+RUN bash -c "$(curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh)"
+
 # Update the path
 RUN <<EOF cat >> ~/.bashrc
 export PATH="\$PATH:/root/.dotnet/tools:/usr/share/hapi-fhir-cli"
