@@ -7,7 +7,10 @@ It contains:
 - [SUSHI](https://fshschool.org/docs/sushi/), a FSH compiler. SUSHI converts FSH language to FHIR artifacts
 - [GoFSH](https://fshschool.org/docs/gofsh/), a converter that takes FHIR artifacts (e.g., profiles, extensions, value sets, instances) and produces equivalent FSH
 - [FHIR IG Publisher prerequisites](https://confluence.hl7.org/display/FHIR/IG+Publisher+Documentation): Java, Git, Ruby, Jekyll
-- Some terminal utilities: [Firely Terminal](https://docs.fire.ly/projects/Firely-Terminal/index.html) and [bonFHIR CLI](https://bonfhir.dev/packages/cli)
+- Some terminal utilities:
+  - [HAPI FHIR CLI](https://hapifhir.io/hapi-fhir/docs/tools/hapi_fhir_cli.html)
+  - [Firely Terminal](https://docs.fire.ly/projects/Firely-Terminal/index.html)
+  - [bonFHIR CLI](https://bonfhir.dev/packages/cli)
 
 > To learn how to author FHIR Implementation Guides using FSH, head over to the [FSH School](https://fshschool.org/).
 
