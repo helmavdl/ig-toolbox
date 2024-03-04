@@ -1,0 +1,31 @@
+#!/usr/bin/env node
+
+const fs = require("fs");
+
+const filename = process.argv[2] || "resources";
+
+if (fs.existsSync(`input/images-source/${filename}.plantuml`)) {
+  console.error(`File input/images-source/${filename}.plantuml already exists. Skipping.`);
+  process.exit(1);
+}
+
+fs.mkdirSync("input/images-source", { recursive: true });
+fs.writeFileSync(`input/images-source/${filename}.plantuml`, `@startuml Resources
+!theme carbon-gray
+
+package Base <<Rectangle>> {
+  class Patient [[StructureDefinition-Patient.html]]
+}
+@enduml`);
+
+console.log(`Created input/images-source/${filename}.plantuml`);
+console.log();
+console.log(`Add the following to your markdown to include the diagram:`);
+console.log();
+console.log();
+console.log(`<figure>
+  {% include ${filename}.svg %}
+</figure>
+<br clear="all">`);
+console.log();
+console.log();

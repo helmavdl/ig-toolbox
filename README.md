@@ -102,3 +102,13 @@ This will create 2 files:
   ]
 }
 ```
+
+## Helper scripts
+
+### Add profile
+
+Use the `add-profile <profile-name>` script to create a new Profile FSH file, and its companion Markdown file in the `pagecontent` folder.
+
+### Add FHIR resource diagram
+
+Use the `add-fhir-resource-diagram <diagram-name>` to create a [PlantUML class diagram](https://plantuml.com/) that can be used to represent FHIR resources relationships.
