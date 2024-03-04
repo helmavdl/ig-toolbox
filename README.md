@@ -11,6 +11,7 @@ It contains:
   - [HAPI FHIR CLI](https://hapifhir.io/hapi-fhir/docs/tools/hapi_fhir_cli.html)
   - [Firely Terminal](https://docs.fire.ly/projects/Firely-Terminal/index.html)
   - [bonFHIR CLI](https://bonfhir.dev/packages/cli)
+  - [jq](https://github.com/jqlang/jq)
 - And [Oh My Bash](https://ohmybash.nntoan.com/) for a better shell experience
 
 > To learn how to author FHIR Implementation Guides using FSH, head over to the [FSH School](https://fshschool.org/).
