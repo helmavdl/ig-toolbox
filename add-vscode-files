@@ -48,6 +48,19 @@ if (!fs.existsSync(".vscode/tasks.json")) {
             problemMatcher: [],
           },
           {
+            label: "Update IG Publisher",
+            type: "shell",
+            command: "./_updatePublisher.sh -y",
+            presentation: {
+              reveal: "always",
+              focus: false,
+              panel: "shared",
+              showReuseMessage: false,
+              clear: false,
+            },
+            problemMatcher: [],
+          },
+          {
             label: "Run IG Publisher",
             type: "shell",
             command: "./_genonce.sh",
@@ -61,6 +74,48 @@ if (!fs.existsSync(".vscode/tasks.json")) {
               clear: false,
             },
             problemMatcher: [],
+          },
+          {
+            label: "Add new profile",
+            type: "shell",
+            command: "add-profile ${input:name}",
+            options: {
+              cwd: "${workspaceFolder}",
+            },
+            presentation: {
+              echo: false,
+              reveal: "silent",
+              focus: false,
+              panel: "shared",
+              showReuseMessage: false,
+              clear: false,
+            },
+            problemMatcher: [],
+          },
+          {
+            label: "Add new diagram",
+            type: "shell",
+            command: "add-fhir-resource-diagram ${input:name}",
+            options: {
+              cwd: "${workspaceFolder}",
+            },
+            presentation: {
+              echo: false,
+              reveal: "always",
+              focus: false,
+              panel: "shared",
+              showReuseMessage: false,
+              clear: false,
+            },
+            problemMatcher: [],
+          },
+        ],
+        inputs: [
+          {
+            id: "name",
+            description: "Name",
+            default: "",
+            type: "promptString",
           },
         ],
       },

@@ -14,12 +14,12 @@ It contains:
   - [jq](https://github.com/jqlang/jq)
 - And [Oh My Bash](https://ohmybash.nntoan.com/) for a better shell experience
 
-> To learn how to author FHIR Implementation Guides using FSH, head over to the [FSH School](https://fshschool.org/).
+> To learn how to get started, head over to our tutorial at https://bonfhir.dev/docs/guides/ig-toolbox
 
 ## Usage
 
 ```shell
-docker run -it --rm -v .:/workspaces ghcr.io/bonfhir/ig-toolbox:latest
+docker run -it --rm -v .:/workspaces ghcr.io/bonfhir/ig-toolbox
 ```
 
 This will get you a shell where all the tools are available, and the current directory is volume-mounted.
@@ -27,7 +27,7 @@ This will get you a shell where all the tools are available, and the current dir
 To get started with a new sushi project, you can use [`sushi init`](https://fshschool.org/docs/sushi/project/#initializing-a-sushi-project); to use it directly from the docker image simply start with:
 
 ```shell
-docker run -it --rm -v .:/workspaces ghcr.io/bonfhir/ig-toolbox:latest sushi init
+docker run -it --rm -v .:/workspaces ghcr.io/bonfhir/ig-toolbox sushi init
 ```
 
 To use the [IG Puslisher](https://confluence.hl7.org/display/FHIR/IG+Publisher+Documentation), you'll need to execute the `./_updatePublisher.sh` script once after the project is generated.
@@ -37,7 +37,7 @@ To use the [IG Puslisher](https://confluence.hl7.org/display/FHIR/IG+Publisher+D
 You can simply setup a [VS Code dev container setup](https://code.visualstudio.com/docs/devcontainers/containers) in the current directory by running:
 
 ```shell
-docker run -it --rm -v .:/workspaces ghcr.io/bonfhir/ig-toolbox:latest add-vscode-files
+docker run -it --rm -v .:/workspaces ghcr.io/bonfhir/ig-toolbox add-vscode-files
 ```
 
 (Or simply run `add-vscode-files` if you are already in the container).
@@ -49,7 +49,7 @@ This will create 2 files:
 ```json
 {
   "name": "FSH in VS Code",
-  "image": "ghcr.io/bonfhir/ig-toolbox:latest",
+  "image": "ghcr.io/bonfhir/ig-toolbox",
   "remoteUser": "root",
   "customizations": {
     "vscode": {

@@ -11,10 +11,10 @@ if (!profile?.length > 2) {
 
 profile = profile[0].toUpperCase() + profile.slice(1);
 
-if(fs.existsSync(`input/fsh/profiles/${profile}.fsh`)) {
-  console.error(`File input/fsh/profiles/${profile}.fsh already exists. Skipping.`);
+if(fs.existsSync(`input/fsh/${profile}.fsh`)) {
+  console.error(`File input/fsh/${profile}.fsh already exists. Skipping.`);
   process.exit(1);
 }
 
-fs.writeFileSync(`input/fsh/profiles/${profile}.fsh`, `Profile: ${profile}`);
+fs.writeFileSync(`input/fsh/${profile}.fsh`, `Profile: ${profile}`);
 fs.writeFileSync(`input/pagecontent/StructureDefinition-${profile}-intro.md`, ``);

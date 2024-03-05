@@ -28,8 +28,10 @@ RUN mkdir -p /share/src/hapi-fhir-cli \
     && unzip -q /usr/share/hapi-fhir-cli.zip -d /usr/share/hapi-fhir-cli \
     && rm -f /usr/share/hapi-fhir-cli.zip
 
-# Install our little helper script
+# Install our little helper scripts
 COPY add-vscode-files /usr/bin/add-vscode-files
+COPY add-profile /usr/bin/add-profile
+COPY add-fhir-resource-diagram /usr/bin/add-fhir-resource-diagram
 
 # Install Oh-my-bash
 RUN bash -c "$(curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh)"
