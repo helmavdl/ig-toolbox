@@ -5,11 +5,11 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     && apt-get -y install --no-install-recommends locales git openjdk-17-jre ruby-full build-essential zlib1g-dev nodejs npm curl unzip plantuml graphviz jq\
     && rm -rf /var/lib/apt/lists/*
 
-# Fix locale issues in various environments
+# Fix locale issues
 RUN sed -i '/en_US.UTF-8/s/^# //g' /etc/locale.gen && locale-gen
-ENV LANG en_US.UTF-8  
-ENV LANGUAGE en_US:en  
-ENV LC_ALL en_US.UTF-8
+ENV LANG="en_US.UTF-8" 
+ENV LANGUAGE="en_US:en"
+ENV LC_ALL="en_US.UTF-8"
 
 # Install Jekyll
 RUN gem install -N jekyll bundler
