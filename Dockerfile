@@ -47,6 +47,7 @@ RUN mkdir -p /usr/share/hapi-fhir-cli \
 RUN mkdir -p /usr/share/igpublisher \
     && curl -L https://github.com/HL7/fhir-ig-publisher/releases/latest/download/publisher.jar -o /usr/share/igpublisher/publisher.jar
 
+# Add helper scripts
 COPY add-vscode-files /usr/bin/add-vscode-files
 COPY add-profile /usr/bin/add-profile
 COPY add-fhir-resource-diagram /usr/bin/add-fhir-resource-diagram
