@@ -37,8 +37,12 @@ ENV DOTNET_ROOT="/usr/share/dotnet"
 ENV PATH="$PATH:/root/.dotnet/tools:/usr/share/hapi-fhir-cli"
 RUN dotnet tool install -g firely.terminal --version 3.4.0
 
+# Install HAPI FHIR CLI 8.2.1
+RUN mkdir -p /usr/share/hapi-fhir-cli \
+    && curl -SL https://github.com/hapifhir/hapi-fhir/releases/download/v8.2.1/hapi-fhir-8.2.1-cli.zip -o /tmp/hapi-cli.zip \
+    && unzip -q /tmp/hapi-cli.zip -d /usr/share/hapi-fhir-cli \
+    && rm -f /tmp/hapi-cli.zip
 
-# Install our little helper scripts
 COPY add-vscode-files /usr/bin/add-vscode-files
 COPY add-profile /usr/bin/add-profile
 COPY add-fhir-resource-diagram /usr/bin/add-fhir-resource-diagram
