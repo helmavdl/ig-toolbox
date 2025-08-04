@@ -1,8 +1,16 @@
 FROM debian:bookworm-slim
 
 # Install OS dependencies
-RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
-    && apt-get -y install --no-install-recommends locales git openjdk-17-jre ruby-full build-essential zlib1g-dev nodejs npm curl unzip plantuml graphviz jq\
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive \
+    apt-get install -y --no-install-recommends \
+    locales git \
+    openjdk-17-jre ruby-full \
+    build-essential zlib1g-dev \
+    nodejs npm \
+    curl unzip \
+    plantuml graphviz \
+    jq \
+    gnupg ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 # Fix locale issues
