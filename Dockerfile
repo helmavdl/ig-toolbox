@@ -23,7 +23,7 @@ ENV LC_ALL="en_US.UTF-8"
 RUN gem install -N jekyll bundler
 
 # Install FHIR Sushi, GoFSH and BonFHIR CLI
-RUN npm i -g fsh-sushi gofsh @bonfhir/cli
+RUN npm install -g fsh-sushi gofsh @bonfhir/cli
 
 # Install Firely Terminal
 RUN curl -sSL https://dot.net/v1/dotnet-install.sh | bash /dev/stdin -Channel 6.0 -InstallDir /usr/share/dotnet \
