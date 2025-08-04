@@ -25,16 +25,18 @@ RUN gem install -N jekyll bundler
 # Install FHIR Sushi, GoFSH and BonFHIR CLI
 RUN npm install -g fsh-sushi gofsh @bonfhir/cli
 
-# Install Firely Terminal
-RUN curl -sSL https://dot.net/v1/dotnet-install.sh | bash /dev/stdin -Channel 6.0 -InstallDir /usr/share/dotnet \
-    && ln -s /usr/share/dotnet/dotnet /usr/bin/dotnet
-RUN dotnet tool install -g firely.terminal
+# Install .NET 8 SDK for Firely Terminal 3.4.0
+RUN curl -sSL https://packages.microsoft.com/config/debian/12/packages-microsoft-prod.deb -o packages-microsoft-prod.deb \
+    && dpkg -i packages-microsoft-prod.deb \
+    && rm packages-microsoft-prod.deb \
+    && apt-get update && apt-get install -y dotnet-sdk-8.0 \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install HAPI FHIR CLI
-RUN mkdir -p /share/src/hapi-fhir-cli \
-    && curl -SL https://github.com/hapifhir/hapi-fhir/releases/download/v7.0.0/hapi-fhir-7.0.0-cli.zip -o /usr/share/hapi-fhir-cli.zip \
-    && unzip -q /usr/share/hapi-fhir-cli.zip -d /usr/share/hapi-fhir-cli \
-    && rm -f /usr/share/hapi-fhir-cli.zip
+# Set up Firely Terminal 3.4.0
+ENV DOTNET_ROOT="/usr/share/dotnet" 
+ENV PATH="$PATH:/root/.dotnet/tools:/usr/share/hapi-fhir-cli"
+RUN dotnet tool install -g firely.terminal --version 3.4.0
+
 
 # Install our little helper scripts
 COPY add-vscode-files /usr/bin/add-vscode-files
