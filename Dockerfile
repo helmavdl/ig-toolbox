@@ -59,12 +59,7 @@ RUN echo '#!/bin/bash\njava -jar /usr/share/igpublisher/publisher.jar "$@"' > /u
 # Install Oh-my-bash
 RUN bash -c "$(curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh)"
 
-# Update the PATH
-RUN <<EOF cat >> ~/.bashrc
-export PATH="\$PATH:/root/.dotnet/tools:/usr/share/hapi-fhir-cli"
-EOF
-
-# Default working directory
+# Set working directory
 RUN mkdir /workspaces
 WORKDIR /workspaces
 
