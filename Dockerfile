@@ -43,9 +43,17 @@ RUN mkdir -p /usr/share/hapi-fhir-cli \
     && unzip -q /tmp/hapi-cli.zip -d /usr/share/hapi-fhir-cli \
     && rm -f /tmp/hapi-cli.zip
 
+# Install FHIR IG Publisher
+RUN mkdir -p /usr/share/igpublisher \
+    && curl -L https://github.com/HL7/fhir-ig-publisher/releases/latest/download/publisher.jar -o /usr/share/igpublisher/publisher.jar
+
 COPY add-vscode-files /usr/bin/add-vscode-files
 COPY add-profile /usr/bin/add-profile
 COPY add-fhir-resource-diagram /usr/bin/add-fhir-resource-diagram
+
+# Make a shortcut command
+RUN echo '#!/bin/bash\njava -jar /usr/share/igpublisher/publisher.jar "$@"' > /usr/bin/publisher \
+    && chmod +x /usr/bin/publisher
 
 # Install Oh-my-bash
 RUN bash -c "$(curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh)"
