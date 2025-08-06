@@ -52,6 +52,9 @@ RUN mkdir -p /usr/share/igpublisher \
 RUN echo '#!/bin/bash\njava -jar /usr/share/igpublisher/publisher.jar "$@"' > /usr/bin/publisher \
     && chmod +x /usr/bin/publisher
 
+# Install HL7 FHIR Validator CLI
+RUN curl -L https://github.com/hapifhir/org.hl7.fhir.core/releases/latest/download/validator_cli.jar -o /usr/share/validator_cli.jar
+
 # Install Oh-my-bash
 RUN bash -c "$(curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh)"
 
