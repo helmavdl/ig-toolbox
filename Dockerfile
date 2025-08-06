@@ -9,6 +9,7 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive \
     nodejs npm \
     curl unzip \
     plantuml graphviz \
+    nginx gettext-base \
     jq \
     gnupg ca-certificates \
     && rm -rf /var/lib/apt/lists/*
@@ -58,6 +59,13 @@ RUN echo '#!/bin/bash\njava -jar /usr/share/igpublisher/publisher.jar "$@"' > /u
 
 # Install Oh-my-bash
 RUN bash -c "$(curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh)"
+
+# Copy nginx config and start script
+COPY run_nginx.sh /run_nginx.sh
+RUN chmod +x /run_nginx.sh
+
+EXPOSE 80
+
 
 # Set working directory
 RUN mkdir /workspaces
