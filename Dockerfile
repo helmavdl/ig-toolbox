@@ -84,6 +84,9 @@ RUN echo 'if [[ -n "$FIRELY_USERNAME" && -n "$FIRELY_PASSWORD" ]]; then \
   fi; \
 fi' >> ~/.bashrc
 
+# Set time to 24h clock in the oh my Bash prompt
+RUN echo 'export THEME_CLOCK_FORMAT="%H:%M:%S"' >> ~/.bashrc
+
 
 # Set working directory
 RUN mkdir /workspaces
