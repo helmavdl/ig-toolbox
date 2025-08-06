@@ -74,6 +74,15 @@ COPY build-scripts/add-profile /usr/bin/add-profile
 COPY build-scripts/add-fhir-resource-diagram /usr/bin/add-fhir-resource-diagram
 RUN chmod +x /usr/bin/add-vscode-files /usr/bin/add-profile /usr/bin/add-fhir-resource-diagram
 
+# log in to Firely.terminal on container start
+RUN echo 'if [[ -n "$FIRELY_USERNAME" && -n "$FIRELY_PASSWORD" ]]; then \
+  if fhir login email="$FIRELY_USERNAME" password="$FIRELY_PASSWORD"; then \
+    unset FIRELY_USERNAME; \
+    unset FIRELY_PASSWORD; \
+  else \
+    echo "Firely login failed"; \
+  fi; \
+fi' >> ~/.bashrc
 
 
 # Set working directory
