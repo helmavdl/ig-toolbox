@@ -10,7 +10,6 @@ CONTAINERS=$(docker ps -a -q --filter ancestor=$IMAGE_NAME)
 
 if [ -n "$CONTAINERS" ]; then
     echo "🛑 Stopping and removing containers:"
-    echo "$CONTAINERS"
     docker rm -f $CONTAINERS
 else
     echo "✅ No running or stopped containers found for $IMAGE_NAME."
