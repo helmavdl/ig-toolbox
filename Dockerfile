@@ -74,4 +74,8 @@ RUN chmod +x /usr/bin/update-checker.sh
 RUN mkdir /workspaces
 WORKDIR /workspaces
 
-CMD [ "/bin/bash" ]
+# Entry script that runs nginx + update checker + shell
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]
