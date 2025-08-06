@@ -1,6 +1,8 @@
 #!/bin/bash
 set -e
 
+export PATH="/usr/local/bin/ig-scripts:$PATH"
+
 echo "[ENTRYPOINT] Generating dynamic NGINX config..."
 /usr/bin/run-nginx.sh &
 

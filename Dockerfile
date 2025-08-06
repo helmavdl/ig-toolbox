@@ -48,11 +48,6 @@ RUN mkdir -p /usr/share/hapi-fhir-cli \
 RUN mkdir -p /usr/share/igpublisher \
     && curl -L https://github.com/HL7/fhir-ig-publisher/releases/latest/download/publisher.jar -o /usr/share/igpublisher/publisher.jar
 
-# Add helper scripts
-COPY add-vscode-files /usr/bin/add-vscode-files
-COPY add-profile /usr/bin/add-profile
-COPY add-fhir-resource-diagram /usr/bin/add-fhir-resource-diagram
-
 # Make a shortcut command
 RUN echo '#!/bin/bash\njava -jar /usr/share/igpublisher/publisher.jar "$@"' > /usr/bin/publisher \
     && chmod +x /usr/bin/publisher
@@ -61,21 +56,29 @@ RUN echo '#!/bin/bash\njava -jar /usr/share/igpublisher/publisher.jar "$@"' > /u
 RUN bash -c "$(curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh)"
 
 # Copy nginx config and start script
-COPY run_nginx.sh /run_nginx.sh
-RUN chmod +x /run_nginx.sh
+COPY build-scripts/run-nginx.sh /usr/bin/run-nginx.sh
+RUN chmod +x /usr/bin/run-nginx.sh
 
 EXPOSE 80
 
 # copy the update checker
-COPY update-checker.sh /usr/bin/update-checker.sh
+COPY build-scripts/update-checker.sh /usr/bin/update-checker.sh
 RUN chmod +x /usr/bin/update-checker.sh
+
+# Add helper scripts
+COPY build-scripts/add-vscode-files /usr/bin/add-vscode-files
+COPY build-scripts/add-profile /usr/bin/add-profile
+COPY build-scripts/add-fhir-resource-diagram /usr/bin/add-fhir-resource-diagram
+RUN chmod +x /usr/bin/add-vscode-files /usr/bin/add-profile /usr/bin/add-fhir-resource-diagram
+
+
 
 # Set working directory
 RUN mkdir /workspaces
 WORKDIR /workspaces
 
 # Entry script that runs nginx + update checker + shell
-COPY entrypoint.sh /entrypoint.sh
+COPY build-scripts/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 ENTRYPOINT ["/entrypoint.sh"]

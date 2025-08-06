@@ -1,0 +1,51 @@
+#!/usr/bin/env node
+
+const fs = require("fs");
+const path = require("path");
+
+const currentFile = process.argv[2];
+let profile = process.argv[3];
+
+if (!currentFile || !profile || profile.length < 2) {
+  console.error("Usage: add-profile.js <currentFile> <profile-name>");
+  process.exit(1);
+}
+
+// Capitalize profile name
+// 2025-08-06 not part of our guidelines
+// profile = profile[0].toUpperCase() + profile.slice(1);
+
+// Extract project root: /workspaces/<project>
+const match = currentFile.match(/\/workspaces\/[^/]+/);
+if (!match) {
+  console.error("Could not determine project root from file path:", currentFile);
+  process.exit(1);
+}
+
+const projectRoot = match[0];
+const profileDir = path.join(projectRoot, "input/fsh/profiles");
+const introDir = path.join(projectRoot, "input/pagecontent");
+
+const profileFilePath = path.join(profileDir, `${profile}.fsh`);
+const introFilePath = path.join(introDir, `StructureDefinition-${profile}-intro.md`);
+
+// Ensure directories exist
+if (!fs.existsSync(profileDir)) {
+  fs.mkdirSync(profileDir, { recursive: true });
+}
+if (!fs.existsSync(introDir)) {
+  fs.mkdirSync(introDir, { recursive: true });
+}
+
+// Check for existing profile file
+if (fs.existsSync(profileFilePath)) {
+  console.error(`File ${profileFilePath} already exists. Skipping.`);
+  process.exit(1);
+}
+
+// Write the profile and intro markdown
+fs.writeFileSync(profileFilePath, `Profile: ${profile}\n`);
+fs.writeFileSync(introFilePath, ``);
+
+console.log(`Created profile: ${profileFilePath}`);
+console.log(`Created intro: ${introFilePath}`);

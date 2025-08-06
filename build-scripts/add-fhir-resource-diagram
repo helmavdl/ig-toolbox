@@ -1,0 +1,51 @@
+#!/usr/bin/env node
+
+const fs = require("fs");
+const path = require("path");
+
+const currentFile = process.argv[2]; // VS Code passes `${file}` here
+const filename = process.argv[3] || "resources";
+
+if (!currentFile || !filename || filename.length < 2) {
+  console.error("Missing path to current file. Usage: add-fhir-resource-diagram.js <currentFile> <diagram-name>");
+  process.exit(1);
+}
+
+// Extract project root: /workspaces/<project>
+const match = currentFile.match(/\/workspaces\/[^/]+/);
+if (!match) {
+  console.error("Could not determine project root from file path:", currentFile);
+  process.exit(1);
+}
+
+const projectRoot = match[0];
+const diagramDir = path.join(projectRoot, "input/images-source");
+const diagramPath = path.join(diagramDir, `${filename}.plantuml`);
+
+if (fs.existsSync(diagramPath)) {
+  console.error(`File ${diagramPath} already exists. Skipping.`);
+  process.exit(1);
+}
+
+// 🛠 Create the directory if needed
+fs.mkdirSync(diagramDir, { recursive: true });
+
+fs.writeFileSync(`${diagramPath}`, `@startuml Resources
+!theme carbon-gray
+
+package Base <<Rectangle>> {
+  class Patient [[StructureDefinition-Patient.html]]
+}
+@enduml`);
+
+console.log(`Created ${diagramPath}`);
+console.log();
+console.log(`Add the following to your markdown to include the diagram:`);
+console.log();
+console.log();
+console.log(`<figure>
+  {% include ${filename}.svg %}
+</figure>
+<br clear="all">`);
+console.log();
+console.log();

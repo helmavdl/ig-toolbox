@@ -9,7 +9,7 @@ echo "[INFO] Preparing NGINX..."
 
 rm -f /etc/nginx/conf.d/*
 
-for workspace_dir in /workspaces/*; do
+for workspace_dir in /workspaces/projects; do
     [[ -d "$workspace_dir" ]] || continue
 
     project_name=$(basename "$workspace_dir")

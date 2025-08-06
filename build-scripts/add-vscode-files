@@ -8,30 +8,32 @@ if (!fs.existsSync(".devcontainer/devcontainer.json")) {
     ".devcontainer/devcontainer.json",
     JSON.stringify(
       {
-        name: "FSH in VS Code",
-        image: "ig-toolbox:latest",
-        remoteUser: "root",
-
+        "name": "FSH in VS Code",
+        "image": "ig-toolbox:latest",
+        "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces,type=bind",
         "workspaceFolder": "/workspaces",
-
-        "runArgs": ["--init", "-p", "8080:80"],
-
-        "settings": {
-          "terminal.integrated.defaultProfile.linux": "bash",
-          "yaml.schemas": {
-            "https://json.schemastore.org/github-workflow.json": "/.github/workflows/*",
-            "https://raw.githubusercontent.com/HL7/fhir-ig-publisher/master/org.hl7.fhir.publisher.schema.json": "ig.ini"
+        "forwardPorts": [
+          80
+        ],
+        "customizations": {
+          "vscode": {
+            "settings": {
+              "terminal.integrated.defaultProfile.linux": "bash",
+              "yaml.schemas": {
+                "https://json.schemastore.org/github-workflow.json": "/.github/workflows/*",
+                "https://raw.githubusercontent.com/HL7/fhir-ig-publisher/master/org.hl7.fhir.publisher.schema.json": "ig.ini"
+              }
+            },
+            "extensions": [
+              "MITRE-Health.vscode-language-fsh",
+              "jebbs.plantuml",
+              "redhat.vscode-yaml",
+              "esbenp.prettier-vscode",
+              "ms-azuretools.vscode-docker",
+              "ms-vscode-remote.remote-containers"
+            ]
           }
-        },
-        customizations: {
-          vscode: {
-            extensions: [
-              "MITRE-Health.vscode-language-fsh",  // FSH language support
-              "jebbs.plantuml",                    // PlantUML diagrams
-              "redhat.vscode-yaml",                // YAML language + schema validation
-            ],
-          },
-        },
+        }
       },
       undefined,
       2
@@ -94,10 +96,8 @@ if (!fs.existsSync(".vscode/tasks.json")) {
           {
             label: "Add new profile",
             type: "shell",
-            command: "add-profile ${input:name}",
-            options: {
-              cwd: "${workspaceFolder}",
-            },
+            command: "add-profile.js",
+            args: ["${file}", "${input:name}"],
             presentation: {
               echo: false,
               reveal: "silent",
