@@ -9,11 +9,27 @@ if (!fs.existsSync(".devcontainer/devcontainer.json")) {
     JSON.stringify(
       {
         name: "FSH in VS Code",
-        image: "ghcr.io/bonfhir/ig-toolbox:latest",
+        image: "ig-toolbox:latest",
         remoteUser: "root",
+
+        "workspaceFolder": "/workspaces",
+
+        "runArgs": ["--init", "-p", "8080:80"],
+
+        "settings": {
+          "terminal.integrated.defaultProfile.linux": "bash",
+          "yaml.schemas": {
+            "https://json.schemastore.org/github-workflow.json": "/.github/workflows/*",
+            "https://raw.githubusercontent.com/HL7/fhir-ig-publisher/master/org.hl7.fhir.publisher.schema.json": "ig.ini"
+          }
+        },
         customizations: {
           vscode: {
-            extensions: ["MITRE-Health.vscode-language-fsh", "jebbs.plantuml"],
+            extensions: [
+              "MITRE-Health.vscode-language-fsh",  // FSH language support
+              "jebbs.plantuml",                    // PlantUML diagrams
+              "redhat.vscode-yaml",                // YAML language + schema validation
+            ],
           },
         },
       },
