@@ -66,6 +66,9 @@ RUN chmod +x /run_nginx.sh
 
 EXPOSE 80
 
+# copy the update checker
+COPY update-checker.sh /usr/bin/update-checker.sh
+RUN chmod +x /usr/bin/update-checker.sh
 
 # Set working directory
 RUN mkdir /workspaces
