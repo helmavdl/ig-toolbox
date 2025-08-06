@@ -6,16 +6,10 @@
 
 set -e
 
-IMAGE_NAME="ig-toolbox:latest"
-CONTAINER_NAME="ig-dev"
+# Location of the script
+ME_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-# Detect absolute path of the current project (mounted as /workspaces)
-PROJECT_PATH="$(pwd)"
+source "${ME_DIR}/ig-toolbox-common.sh"
 
-echo "🚀 Starting IG Toolbox container..."
-docker run -it --rm \
-  --name "$CONTAINER_NAME" \
-  -v "$PROJECT_PATH":/workspaces \
-  -w /workspaces \
-  -p 8080:80 \
-  "$IMAGE_NAME"
+PORT=$(find_free_port) || exit 1
+docker_run "$PORT"
