@@ -26,11 +26,11 @@ RUN gem install -N jekyll bundler
 RUN npm install -g fsh-sushi gofsh @bonfhir/cli
 
 # Install .NET 8 SDK for Firely Terminal 3.4.0
-RUN curl -sSL https://packages.microsoft.com/config/debian/12/packages-microsoft-prod.deb -o packages-microsoft-prod.deb \
-    && dpkg -i packages-microsoft-prod.deb \
-    && rm packages-microsoft-prod.deb \
-    && apt-get update && apt-get install -y dotnet-sdk-8.0 \
-    && rm -rf /var/lib/apt/lists/*
+# Install .NET 8.0 SDK using the official install script
+RUN curl -sSL https://dot.net/v1/dotnet-install.sh -o dotnet-install.sh \
+    && bash dotnet-install.sh --channel 8.0 --install-dir /usr/share/dotnet \
+    && ln -s /usr/share/dotnet/dotnet /usr/bin/dotnet \
+    && rm dotnet-install.sh
 
 # Set up Firely Terminal 3.4.0
 ENV DOTNET_ROOT="/usr/share/dotnet" 
