@@ -1,0 +1,16 @@
+services:
+  ig-toolbox:
+    image: ig-toolbox:latest
+    container_name: ${CONTAINER_NAME}
+    volumes:
+      - .:/workspaces/projects
+      - ${TOOLBOX_SCRIPTS}/scripts:/workspaces/scripts:ro
+    working_dir: /workspaces
+    ports:
+      - "${PORT_BIND}:80"
+    environment:
+      FIRELY_USERNAME=${FIRELY_USERNAME}
+      FIRELY_PASSWORD=${FIRELY_PASSWORD}
+      TZ: ${TZ:-Europe/Amsterdam}
+    stdin_open: true
+    tty: true
