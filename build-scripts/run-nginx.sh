@@ -5,59 +5,61 @@
 
 set -euo pipefail
 
-echo "[INFO] Preparing NGINX..."
+echo "[INFO] Configuring NGINX for multi-project IG hosting..."
 
+PROJECTS_DIR="/workspaces/projects"
+OUTPUT_DIR="output"
+NGINX_CONF="/etc/nginx/conf.d/ig-projects.conf"
+INDEX_FILE="/workspaces/index.html"
+
+# Clean existing config
 rm -f /etc/nginx/conf.d/*
+rm -f "$INDEX_FILE"
 
-for workspace_dir in /workspaces/projects; do
-    [[ -d "$workspace_dir" ]] || continue
-
-    project_name=$(basename "$workspace_dir")
-    project_conf="/etc/nginx/conf.d/${project_name}.conf"
-
-    # Defaults
-    SERVER_NAME=""
-    ROOT_DIR="output"
-
-    # Optional .project.env config
-    if [[ -f "$workspace_dir/.project.env" ]]; then
-        echo "[INFO] Loading config from $workspace_dir/.project.env"
-        set -o allexport
-        source "$workspace_dir/.project.env"
-        set +o allexport
-    fi
-
-    echo "[INFO] Generating config for $project_name (SERVER_NAME=${SERVER_NAME:-localhost})"
-
-    if [[ -n "${SERVER_NAME}" ]]; then
-        cat <<EOF > "$project_conf"
-server {
-    listen 80;
-    server_name $SERVER_NAME;
-
-    root $workspace_dir/$ROOT_DIR;
-    index index.html;
-
-    location / {
-        try_files \$uri /index.html;
-    }
-}
-EOF
-    else
-        cat <<EOF > "$project_conf"
+# Start config file with single server block
+cat <<EOF > "$NGINX_CONF"
 server {
     listen 80;
     server_name localhost;
 
-    location /$project_name/ {
-        alias $workspace_dir/$ROOT_DIR/;
-        index index.html;
-        try_files \$uri /$project_name/index.html;
+    index index.html;
+    root /workspaces;
+
+    location / {
+        try_files /index.html =404;
     }
-}
+
 EOF
-    fi
+
+# Begin HTML index
+echo "<h1>FHIR IG Projects</h1><ul>" > "$INDEX_FILE"
+
+# Loop through all projects
+for dir in "$PROJECTS_DIR"/*; do
+  [[ -d "$dir/input/fsh" && -f "$dir/$OUTPUT_DIR/index.html" ]] || continue
+
+  project=$(basename "$dir")
+  echo "[INFO] Adding location for project: $project"
+
+  # Append location block
+  cat <<EOF >> "$NGINX_CONF"
+    location /${project}/ {
+        alias ${dir}/${OUTPUT_DIR}/;
+        index index.html;
+        try_files \$uri /${project}/index.html;
+    }
+
+EOF
+
+  # Add link to index.html
+  echo "<li><a href='/${project}/index.html'>${project}</a></li>" >> "$INDEX_FILE"
 done
+
+# Close server block
+echo "}" >> "$NGINX_CONF"
+
+# Finish HTML index
+echo "</ul>" >> "$INDEX_FILE"
 
 echo "[INFO] Starting NGINX..."
 exec nginx -g "daemon off;"
