@@ -20,6 +20,9 @@ ENV LANG="en_US.UTF-8"
 ENV LANGUAGE="en_US:en"
 ENV LC_ALL="en_US.UTF-8"
 
+# Set JAVA_HOME (knowing it will be used as $JAVA_HOME/bin/java)
+ENV JAVA_HOME=/usr/
+
 # Install Jekyll
 RUN gem install -N jekyll bundler
 
