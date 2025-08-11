@@ -14,6 +14,20 @@ It contains:
   - [jq](https://github.com/jqlang/jq)
 - And [Oh My Bash](https://ohmybash.nntoan.com/) for a better shell experience
 
+# 2025-08-06 forked version
+
+This fork is based on this excellent idea but adds updates and extras:
+- updates to all the components
+- add nginx to make navigation in the IG easier
+- add the official FHIR validator
+- add helper scripts to make running the publisher and the validators easier
+- use my own version of the docker image
+- helper script to rebuild and start the container from a project directory
+- allow for multiple projects in one workspace
+- use helper scripts from the ig-toolbox/scripts inside the image
+
+# Original README content
+
 > To learn how to get started, head over to our tutorial at https://bonfhir.dev/docs/guides/ig-toolbox
 
 ## Usage
