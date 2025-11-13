@@ -1,102 +1,333 @@
-FROM debian:bookworm-slim
+# syntax=docker/dockerfile:1.7
 
-# Install OS dependencies
-RUN apt-get update && DEBIAN_FRONTEND=noninteractive \
-    apt-get install -y --no-install-recommends \
-    locales git \
-    openjdk-17-jre ruby-full \
-    build-essential zlib1g-dev \
-    nodejs npm \
-    curl unzip \
-    plantuml graphviz \
-    nginx gettext-base \
-    jq \
-    gnupg ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
+# ----------------------------------------------------
+# Base image with common deps and settings
+# ----------------------------------------------------
+FROM debian:bookworm-slim AS base
 
-# Fix locale issues
-RUN sed -i '/en_US.UTF-8/s/^# //g' /etc/locale.gen && locale-gen
-ENV LANG="en_US.UTF-8" 
-ENV LANGUAGE="en_US:en"
-ENV LC_ALL="en_US.UTF-8"
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+ENV DEBIAN_FRONTEND=noninteractive
 
-# Set JAVA_HOME (knowing it will be used as $JAVA_HOME/bin/java)
-ENV JAVA_HOME=/usr/
+# ----------------------------------------------------
+# Build-time knobs (override with --build-arg)
+# ----------------------------------------------------
+ARG JAVA_MAJOR=17
+ARG DOTNET_CHANNEL=8.0
+ARG FIRELY_TERMINAL_VERSION=3.4.0
+ARG HAPI_CLI_VERSION=8.2.1
+ARG NODE_VERSION=20.17.0
 
-# Install Jekyll
-RUN gem install -N jekyll bundler
+# BuildKit provides these automatically; keep them declared for clarity
+ARG TARGETPLATFORM
+ARG TARGETARCH
 
-# Install FHIR Sushi, GoFSH and BonFHIR CLI
-RUN npm install -g fsh-sushi gofsh @bonfhir/cli
+# ----------------------------------------------------
+# Centralized URLs
+# ----------------------------------------------------
+ENV IG_PUBLISHER_API="https://api.github.com/repos/HL7/fhir-ig-publisher/releases/latest"
+ENV FHIR_VALIDATOR_API="https://api.github.com/repos/hapifhir/org.hl7.fhir.core/releases/latest"
+ENV IG_PUBLISHER_LATEST="https://github.com/HL7/fhir-ig-publisher/releases/latest/download/publisher.jar"
+ENV FHIR_VALIDATOR_LATEST="https://github.com/hapifhir/org.hl7.fhir.core/releases/latest/download/validator_cli.jar"
+ENV DOTNET_INSTALLER_URL="https://dot.net/v1/dotnet-install.sh"
 
-# Install .NET 8 SDK for Firely Terminal 3.4.0
-# Install .NET 8.0 SDK using the official install script
-RUN curl -sSL https://dot.net/v1/dotnet-install.sh -o dotnet-install.sh \
-    && bash dotnet-install.sh --channel 8.0 --install-dir /usr/share/dotnet \
-    && ln -s /usr/share/dotnet/dotnet /usr/bin/dotnet \
-    && rm dotnet-install.sh
+# ----------------------------------------------------
+# Base OS deps (arch-agnostic)
+# ----------------------------------------------------
 
-# Set up Firely Terminal 3.4.0
-ENV DOTNET_ROOT="/usr/share/dotnet" 
-ENV PATH="$PATH:/root/.dotnet/tools:/usr/share/hapi-fhir-cli"
-RUN dotnet tool install -g firely.terminal --version 3.4.0
+# System packages, Java, Ruby, build tools, utilities
+RUN --mount=type=cache,target=/var/cache/apt <<'EOF' bash
+set -e
 
-# Install HAPI FHIR CLI 8.2.1
-RUN mkdir -p /usr/share/hapi-fhir-cli \
-    && curl -SL https://github.com/hapifhir/hapi-fhir/releases/download/v8.2.1/hapi-fhir-8.2.1-cli.zip -o /tmp/hapi-cli.zip \
-    && unzip -q /tmp/hapi-cli.zip -d /usr/share/hapi-fhir-cli \
-    && rm -f /tmp/hapi-cli.zip
+apt-get update
+apt-get install -y --no-install-recommends \
+  ca-certificates curl gnupg unzip xz-utils \
+  jq yq \
+  locales git build-essential zlib1g-dev \
+  ruby-full \
+  "openjdk-${JAVA_MAJOR}-jre" \
+  plantuml graphviz \
+  nginx gettext-base
 
-# Install FHIR IG Publisher
-RUN mkdir -p /usr/share/igpublisher \
-    && curl -L https://github.com/HL7/fhir-ig-publisher/releases/latest/download/publisher.jar -o /usr/share/igpublisher/publisher.jar
+  rm -rf /var/lib/apt/lists/*
+EOF
 
-# Make a shortcut command
-RUN echo '#!/bin/bash\njava -jar /usr/share/igpublisher/publisher.jar "$@"' > /usr/bin/publisher \
-    && chmod +x /usr/bin/publisher
+# ----------------------------------------------------
+# Locale
+# ----------------------------------------------------
+RUN <<'EOF' bash
+set -e
+sed -i '/en_US.UTF-8/s/^# //g' /etc/locale.gen
+locale-gen
+EOF
+ENV LANG="en_US.UTF-8" LANGUAGE="en_US:en" LC_ALL="en_US.UTF-8"
 
-# Install HL7 FHIR Validator CLI
-RUN curl -L https://github.com/hapifhir/org.hl7.fhir.core/releases/latest/download/validator_cli.jar -o /usr/share/validator_cli.jar
 
-# Install Oh-my-bash
-RUN bash -c "$(curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh)"
+# ----------------------------------------------------
+# Node stage (exact version + checksum)
+# ----------------------------------------------------
+FROM base AS node
 
-# Copy nginx config and start script
+ARG NODE_VERSION
+ARG TARGETARCH
+
+ENV NODE_HOME="/usr/local/node" PATH="/usr/local/node/bin:/usr/local/bin:${PATH}"
+
+RUN <<'EOF' bash
+set -euo pipefail
+
+case "${TARGETARCH:-amd64}" in
+  amd64) NODE_DIST="linux-x64" ;;
+  arm64) NODE_DIST="linux-arm64" ;;
+  *) echo "Unsupported TARGETARCH: ${TARGETARCH}" >&2; exit 1 ;;
+esac
+
+NODE_BASE_URL="https://nodejs.org/dist/v${NODE_VERSION}"
+NODE_TARBALL="node-v${NODE_VERSION}-${NODE_DIST}.tar.xz"
+
+cd /tmp
+
+# Download tarball and checksums into /tmp
+curl -fsSLO "${NODE_BASE_URL}/${NODE_TARBALL}"
+curl -fsSLO "${NODE_BASE_URL}/SHASUMS256.txt"
+
+# Verify checksum (now both files are in /tmp, the cwd)
+grep " ${NODE_TARBALL}$" SHASUMS256.txt | sha256sum -c -
+
+# Install Node into NODE_HOME
+mkdir -p "${NODE_HOME}"
+tar -xJf "/tmp/${NODE_TARBALL}" -C "${NODE_HOME}" --strip-components=1
+ln -sf "${NODE_HOME}/bin/node" /usr/local/bin/node
+ln -sf "${NODE_HOME}/bin/npm"  /usr/local/bin/npm
+ln -sf "${NODE_HOME}/bin/npx"  /usr/local/bin/npx
+
+# Clean up
+rm -f "/tmp/${NODE_TARBALL}" "/tmp/SHASUMS256.txt"
+
+node --version
+npm --version
+EOF
+
+
+# ----------------------------------------------------
+# Node CLIs (float to latest; record resolved versions)
+# ----------------------------------------------------
+RUN <<'EOF' bash
+set -e
+npm install -g fsh-sushi gofsh @bonfhir/cli
+(sushi   --version 2>/dev/null | xargs -I{} bash -lc 'echo RESOLVED_SUSHI_VERSION="{}" >> /etc/environment') || true
+(gofsh   --version 2>/dev/null | xargs -I{} bash -lc 'echo RESOLVED_GOFSH_VERSION="{}" >> /etc/environment') || true
+(bonfhir --version 2>/dev/null | xargs -I{} bash -lc 'echo RESOLVED_BONFHIR_VERSION="{}" >> /etc/environment') || true
+EOF
+
+
+# ----------------------------------------------------
+# .NET + Firely Terminal stage
+# ----------------------------------------------------
+FROM base AS dotnet
+
+ARG DOTNET_CHANNEL
+ARG FIRELY_TERMINAL_VERSION
+ARG TARGETARCH
+
+ENV DOTNET_ROOT="/usr/share/dotnet" PATH="$PATH:/usr/local/bin"
+
+RUN <<'EOF' bash
+set -euo pipefail
+
+curl -fsSLo /tmp/dotnet-install.sh "${DOTNET_INSTALLER_URL}"
+if [[ "${TARGETARCH:-amd64}" == "amd64" ]]; then 
+  ARCH_DOTNET="x64"; 
+else 
+  ARCH_DOTNET="arm64"; 
+fi
+bash /tmp/dotnet-install.sh --channel "${DOTNET_CHANNEL}" --architecture "${ARCH_DOTNET}" --install-dir "${DOTNET_ROOT}"
+ln -s "${DOTNET_ROOT}/dotnet" /usr/bin/dotnet
+rm -f /tmp/dotnet-install.sh
+dotnet --info
+EOF
+
+# install Firely terminal
+RUN <<'EOF' bash
+set -e
+dotnet tool install --tool-path /usr/local/bin firely.terminal --version "${FIRELY_TERMINAL_VERSION}"
+echo "RESOLVED_DOTNET_CHANNEL=${DOTNET_CHANNEL}" >> /etc/environment
+echo "RESOLVED_FIRELY_TERMINAL_VERSION=${FIRELY_TERMINAL_VERSION}" >> /etc/environment
+EOF
+
+
+# ----------------------------------------------------
+# HAPI FHIR CLI stage
+# ----------------------------------------------------
+FROM base AS hapi
+
+ARG HAPI_CLI_VERSION
+
+ENV PATH="$PATH:/usr/share/hapi-fhir-cli"
+
+RUN <<'EOF' bash
+set -e
+mkdir -p /usr/share/hapi-fhir-cli
+curl -fsSL "https://github.com/hapifhir/hapi-fhir/releases/download/v${HAPI_CLI_VERSION}/hapi-fhir-${HAPI_CLI_VERSION}-cli.zip" -o /tmp/hapi-cli.zip
+unzip -q /tmp/hapi-cli.zip -d /usr/share/hapi-fhir-cli
+rm -f /tmp/hapi-cli.zip
+EOF
+
+
+# ----------------------------------------------------
+# IG Publisher stage (resolve latest at build time)
+# ----------------------------------------------------
+FROM base AS igpublisher
+
+RUN <<'EOF' bash
+set -euo pipefail
+
+mkdir -p /usr/share/igpublisher
+TAG="$(curl -fsSL ${IG_PUBLISHER_API} | jq -r .tag_name || true)"
+
+if [[ -z "$TAG" || "$TAG" == "null" ]]; then
+  echo "GitHub API unavailable; using latest jar"
+  curl -fsSL ${IG_PUBLISHER_LATEST} -o /usr/share/igpublisher/publisher.jar
+  echo "RESOLVED_IG_PUBLISHER_TAG=latest" >> /etc/environment
+else
+  echo "IG Publisher tag: $TAG"
+  curl -fsSL "https://github.com/HL7/fhir-ig-publisher/releases/download/${TAG}/publisher.jar" -o /usr/share/igpublisher/publisher.jar
+  echo "RESOLVED_IG_PUBLISHER_TAG=${TAG}" >> /etc/environment
+fi
+
+printf '%s\n' '#!/usr/bin/env bash' 'exec java -jar /usr/share/igpublisher/publisher.jar "$@"' > /usr/bin/publisher
+chmod +x /usr/bin/publisher
+EOF
+
+
+# ----------------------------------------------------
+# FHIR Validator stage (resolve latest at build time)
+# ----------------------------------------------------
+FROM base AS validator
+
+RUN <<'EOF' bash
+
+set -euo pipefail
+
+TAG="$(curl -fsSL ${FHIR_VALIDATOR_API} | jq -r .tag_name || true)"
+
+if [[ -z "$TAG" || "$TAG" == "null" ]]; then
+  echo "GitHub API unavailable; using latest validator"
+  curl -fsSL ${FHIR_VALIDATOR_LATEST} -o /usr/share/validator_cli.jar
+  echo "RESOLVED_FHIR_VALIDATOR_TAG=latest" >> /etc/environment
+else
+  echo "FHIR Validator tag: $TAG"
+  curl -fsSL "https://github.com/hapifhir/org.hl7.fhir.core/releases/download/${TAG}/validator_cli.jar" -o /usr/share/validator_cli.jar
+  echo "RESOLVED_FHIR_VALIDATOR_TAG=${TAG}" >> /etc/environment
+fi
+EOF
+
+
+# ----------------------------------------------------
+# Final image: assemble tools, add scripts
+# ----------------------------------------------------
+FROM base AS final
+
+ARG JAVA_MAJOR
+ARG TARGETARCH
+
+# ----------------------------------------------------
+# Java (multi-arch JAVA_HOME) & IG Publisher tuning
+# ----------------------------------------------------
+# Debian installs OpenJDK under /usr/lib/jvm/java-<major>-openjdk-<arch>
+# TARGETARCH is "amd64" or "arm64", which matches Debian suffixes.
+ENV JAVA_HOME="/usr/lib/jvm/java-${JAVA_MAJOR}-openjdk-${TARGETARCH}"
+ENV JAVA_TOOL_OPTIONS="-Xms6g -Xmx6g \
+               -XX:+UseG1GC \
+               -XX:MaxGCPauseMillis=200 \
+               -XX:+UseStringDeduplication \
+               -XX:+AlwaysPreTouch \
+               -XX:+ParallelRefProcEnabled"
+
+
+# Node from node stage
+COPY --from=node /usr/local/node /usr/local/node
+ENV PATH="/usr/local/node/bin:/usr/local/bin:${PATH}"
+COPY --from=node /etc/environment /etc/environment
+
+# .NET + Firely from dotnet stage
+COPY --from=dotnet /usr/share/dotnet /usr/share/dotnet
+RUN ln -s /usr/share/dotnet/dotnet /usr/bin/dotnet
+COPY --from=dotnet /usr/local/bin/fhir /usr/local/bin/fhir
+COPY --from=dotnet /etc/environment /etc/environment
+
+# HAPI CLI
+COPY --from=hapi /usr/share/hapi-fhir-cli /usr/share/hapi-fhir-cli
+ENV PATH="$PATH:/usr/share/hapi-fhir-cli"
+
+# IG Publisher and launcher
+COPY --from=igpublisher /usr/share/igpublisher /usr/share/igpublisher
+COPY --from=igpublisher /usr/bin/publisher /usr/bin/publisher
+COPY --from=igpublisher /etc/environment /etc/environment
+
+# FHIR Validator
+COPY --from=validator /usr/share/validator_cli.jar /usr/share/validator_cli.jar
+COPY --from=validator /etc/environment /etc/environment
+
+# ----------------------------------------------------
+# Ruby gems (float to latest)
+# ----------------------------------------------------
+RUN <<'EOF' bash
+set -e
+gem install -N jekyll bundler
+EOF
+
+# ----------------------------------------------------
+# Oh My Bash (optional shell UX)
+# ----------------------------------------------------
+RUN <<'EOF' bash
+set -e
+bash -lc "$(curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh)" || true
+# add 24h clock to oh my bash
+echo 'export THEME_CLOCK_FORMAT="%H:%M:%S"' >> /root/.bashrc
+EOF
+
+# ----------------------------------------------------
+# Helper scripts
+# ----------------------------------------------------
+
 COPY build-scripts/run-nginx.sh /usr/bin/run-nginx.sh
-RUN chmod +x /usr/bin/run-nginx.sh
-
-EXPOSE 80
-
-# copy the update checker
 COPY build-scripts/update-checker.sh /usr/bin/update-checker.sh
-RUN chmod +x /usr/bin/update-checker.sh
-
-# Add helper scripts
 COPY build-scripts/add-vscode-files /usr/bin/add-vscode-files
 COPY build-scripts/add-profile /usr/bin/add-profile
 COPY build-scripts/add-fhir-resource-diagram /usr/bin/add-fhir-resource-diagram
-RUN chmod +x /usr/bin/add-vscode-files /usr/bin/add-profile /usr/bin/add-fhir-resource-diagram
-
-# log in to Firely.terminal on container start
-RUN echo 'if [[ -n "$FIRELY_USERNAME" && -n "$FIRELY_PASSWORD" ]]; then \
-  if fhir login email="$FIRELY_USERNAME" password="$FIRELY_PASSWORD"; then \
-    unset FIRELY_USERNAME; \
-    unset FIRELY_PASSWORD; \
-  else \
-    echo "Firely login failed"; \
-  fi; \
-fi' >> ~/.bashrc
-
-# Set time to 24h clock in the oh my Bash prompt
-RUN echo 'export THEME_CLOCK_FORMAT="%H:%M:%S"' >> ~/.bashrc
-
-
-# Set working directory
-RUN mkdir /workspaces
-WORKDIR /workspaces
-
-# Entry script that runs nginx + update checker + shell
 COPY build-scripts/entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
 
+RUN <<'EOF' bash
+set -e
+chmod +x /usr/bin/run-nginx.sh /usr/bin/update-checker.sh \
+         /usr/bin/add-vscode-files /usr/bin/add-profile /usr/bin/add-fhir-resource-diagram \
+         /entrypoint.sh
+EOF
+
+# ----------------------------------------------------
+# Optional: auto Firely login on shell start
+# ----------------------------------------------------
+RUN <<'EOF' bash
+set -e
+cat >> /root/.bashrc <<'BRC'
+if [[ -n "$FIRELY_USERNAME" && -n "$FIRELY_PASSWORD" ]]; then
+  if fhir login email="$FIRELY_USERNAME" password="$FIRELY_PASSWORD"; then
+    unset FIRELY_USERNAME
+    unset FIRELY_PASSWORD
+  else
+    echo "Firely login failed"
+  fi
+fi
+BRC
+EOF
+
+# ----------------------------------------------------
+# Workdir & entrypoint
+# ----------------------------------------------------
+WORKDIR /workspaces
 ENTRYPOINT ["/entrypoint.sh"]
+
+# Provenance labels
+LABEL org.opencontainers.image.title="fhir-tooling-suite" \
+      org.opencontainers.image.description="Multi-stage, multi-arch FHIR tooling image. Latest-at-build-time IG Publisher & Validator; pinned Firely Terminal/HAPI CLI." \
+      org.opencontainers.image.vendor="Your Org"
