@@ -4,7 +4,7 @@ services:
     container_name: ${CONTAINER_NAME}
     volumes:
       - .:/workspaces/projects
-      - ${TOOLBOX_SCRIPTS}/scripts:/workspaces/scripts:ro
+      - ${TOOLBOX_SCRIPTS}/toolbox-scripts:/workspaces/scripts:ro
     working_dir: /workspaces
     ports:
       - "${PORT_BIND}:80"
