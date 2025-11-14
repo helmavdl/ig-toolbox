@@ -145,6 +145,7 @@ cmd_start() {
       docker compose -f "${COMPOSE_FILE}" up -d
   fi
 
+  firely_login "${name}"
   cmd_enter "${name}"
 }
 
@@ -230,6 +231,26 @@ cmd_rebuild() {
     d_compose down --remove-orphans
 
   cmd_start "${port}" "${name}"
+}
+
+firely_login() {
+  local name="$1"
+
+  echo "Attempting Firely Terminal auto-login inside '${name}' (if FIRELY_* are set)..."
+
+  docker exec "${name}" bash -lc '
+    if [[ -n "$FIRELY_USERNAME" && -n "$FIRELY_PASSWORD" ]]; then
+      if fhir login email="$FIRELY_USERNAME" password="$FIRELY_PASSWORD"; then
+        echo "Firely login succeeded."
+        unset FIRELY_USERNAME
+        unset FIRELY_PASSWORD
+      else
+        echo "Firely login failed." >&2
+      fi
+    else
+      echo "Firely credentials not set inside container; skipping auto-login."
+    fi
+  '
 }
 
 usage() {

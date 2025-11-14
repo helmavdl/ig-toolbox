@@ -10,10 +10,13 @@ services:
     environment:
       LANG: "en_US.UTF-8"
       LC_ALL: "en_US.UTF-8"
-      FIRELY_USERNAME: ${FIRELY_USERNAME}
-      FIRELY_PASSWORD: ${FIRELY_PASSWORD}
       TZ: ${TZ:-Europe/Amsterdam}
-
+      
+      # Pass-through env vars: if set on the host (or via op run), they appear
+      # in the container; if not set, they’re simply empty with no warnings.
+      FIRELY_USERNAME:
+      FIRELY_PASSWORD:
+      
     volumes:
       # Mount the project directory, adjust this to match the project layout
       - ./projects:/workspaces

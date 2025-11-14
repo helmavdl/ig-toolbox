@@ -335,23 +335,6 @@ chmod +x /usr/bin/run-nginx.sh /usr/bin/update-checker.sh \
 EOF
 
 # ----------------------------------------------------
-# Optional: auto Firely login on shell start
-# ----------------------------------------------------
-RUN <<'EOF' bash
-set -e
-cat >> /root/.bashrc <<'BRC'
-if [[ -n "$FIRELY_USERNAME" && -n "$FIRELY_PASSWORD" ]]; then
-  if fhir login email="$FIRELY_USERNAME" password="$FIRELY_PASSWORD"; then
-    unset FIRELY_USERNAME
-    unset FIRELY_PASSWORD
-  else
-    echo "Firely login failed"
-  fi
-fi
-BRC
-EOF
-
-# ----------------------------------------------------
 # Workdir & entrypoint
 # ----------------------------------------------------
 WORKDIR /workspaces
