@@ -133,12 +133,15 @@ cmd_start() {
   save_state "$name" "$port"
 
   if have op && [[ -f "${ENV_OP_FILE}" ]]; then
-    PORT_BIND="${port}" CONTAINER_NAME="${name}" \
-	TOOLBOX_SCRIPTS="$TOOLBOX_SCRIPTS" \
+    PORT_BIND="${port}" \
+    CONTAINER_NAME="${name}" \
+    TOOLBOX_SCRIPTS="${TOOLBOX_SCRIPTS}" \
       op run --env-file "${ENV_OP_FILE}" -- \
       docker compose -f "${COMPOSE_FILE}" up -d
   else
-    PORT_BIND="${port}" CONTAINER_NAME="${name}" \
+    PORT_BIND="${port}" \
+    CONTAINER_NAME="${name}" \
+    TOOLBOX_SCRIPTS="${TOOLBOX_SCRIPTS}" \
       docker compose -f "${COMPOSE_FILE}" up -d
   fi
 
@@ -221,7 +224,9 @@ cmd_rebuild() {
 
   echo "Rebuilding container '${name}' on port ${port}..."
 
-  PORT_BIND="${port}" CONTAINER_NAME="${name}" \
+  PORT_BIND="$port" \
+  CONTAINER_NAME="$name" \
+  TOOLBOX_SCRIPTS="$TOOLBOX_SCRIPTS" \
     d_compose down --remove-orphans
 
   cmd_start "${port}" "${name}"
