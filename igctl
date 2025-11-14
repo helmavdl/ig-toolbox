@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Script to start/stop/create Docker containers
+# igctl – compose-centric wrapper for ig-toolbox
 #
 
 # Location of the script
@@ -9,152 +9,206 @@ ME_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 # date (now)
 DT=$(date +"%Y-%m-%d")
 
-export TOOLBOX_SCRIPTS=${ME_DIR}
+export TOOLBOX_SCRIPTS=${ROOT_DIR}/toolbox-scripts
 
 set -euo pipefail
 
-# --- config defaults (compose-centric) ---------------------------------------
-IMAGE_NAME="${IMAGE_NAME:-ig-toolbox:latest}"
-PORT_RANGE="${PORT_RANGE:-8080..8099}"           # free port finder range
-ENV_OP_FILE="${ENV_OP_FILE:-.env.op}"            # holds op:// refs (optional)
+# --------------------------------------------------------------------
+# Config: load from .env if present, then apply defaults
+# --------------------------------------------------------------------
+if [[ -f "${ROOT_DIR}/.env" ]]; then
+  set -o allexport
+  # shellcheck disable=SC1091
+  source "${ROOT_DIR}/.env"
+  set +o allexport
+fi
+
+# Image repo/name (no tag) – default matches our Docker/Make setup
+IMAGE_NAME="${IMAGE_NAME:-ig-toolbox}"
+
+# Default port range used when auto-choosing a port
+PORT_RANGE="${PORT_RANGE:-8080..8099}"
+
+# Optional 1Password env file for secrets injection
+ENV_OP_FILE="${ENV_OP_FILE:-.env.op}"
+
+# Docker Compose file (relative to repo root by default)
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.yml}"
-STATE_FILE="${STATE_FILE:-.igctl}"               # stores NAME and PORT in this directory
 
-have(){ command -v "$1" >/dev/null 2>&1; }
-die(){ echo "❌ $*" >&2; exit 1; }
+# State file to remember last used NAME/PORT in this directory
+STATE_FILE="${STATE_FILE:-.igctl}"
 
-# --- helpers -----------------------------------------------------------------
-parse_range(){ local a="${1%%..*}" b="${1##*..}"; echo "$a $b"; }
-find_free_port(){
+# --------------------------------------------------------------------
+# Helpers
+# --------------------------------------------------------------------
+have() { command -v "$1" >/dev/null 2>&1; }
+die()  { echo "Error: $*" >&2; exit 1; }
+
+parse_range() {
+  local a="${1%%..*}" b="${1##*..}"
+  echo "$a $b"
+}
+
+find_free_port() {
   read -r a b < <(parse_range "$PORT_RANGE")
   for ((p=a; p<=b; p++)); do
-    if ! lsof -iTCP:"$p" -sTCP:LISTEN -t >/dev/null 2>&1; then echo "$p"; return; fi
-  done; return 1
+    if ! lsof -iTCP:"$p" -sTCP:LISTEN -t >/dev/null 2>&1; then
+      echo "$p"
+      return 0
+    fi
+  done
+  return 1
 }
 
-compose(){ 
-    docker compose -f "$COMPOSE_FILE" "$@"; 
+compose() {
+  docker compose -f "${COMPOSE_FILE}" "$@"
 }
 
-save_state(){
-  local name="$1"; local port="$2"
-  printf "NAME=%s\nPORT=%s\n" "$name" "$port" > "$STATE_FILE"
+save_state() {
+  local name="$1" port="$2"
+  printf 'NAME=%s\nPORT=%s\n' "$name" "$port" > "${STATE_FILE}"
 }
 
-get_state(){
-  [[ -f "$STATE_FILE" ]] || return 1
+get_state() {
+  [[ -f "${STATE_FILE}" ]] || return 1
   # shellcheck disable=SC1090
-  source "$STATE_FILE"
+  source "${STATE_FILE}"
   [[ -n "${NAME:-}" && -n "${PORT:-}" ]]
 }
 
-infer_running_name(){
-  # Prefer saved NAME if running; else first running by image in this compose project
+infer_running_name() {
+  # Prefer saved NAME if running; else first running by image name
   if get_state 2>/dev/null; then
     if docker ps --format '{{.Names}}' | grep -qx "$NAME"; then
-      echo "$NAME"; return 0
+      echo "$NAME"
+      return 0
     fi
   fi
-  docker ps --filter ancestor="$IMAGE_NAME" --format '{{.Names}}' | head -n1
+  docker ps \
+    --filter ancestor="${IMAGE_NAME}" \
+    --format '{{.Names}}' | head -n1
 }
 
-infer_any_name(){
+infer_any_name() {
   if get_state 2>/dev/null; then
     if docker ps -a --format '{{.Names}}' | grep -qx "$NAME"; then
-      echo "$NAME"; return 0
+      echo "$NAME"
+      return 0
     fi
   fi
-  docker ps -a --filter ancestor="$IMAGE_NAME" --format '{{.Names}}' | head -n1
+  docker ps -a \
+    --filter ancestor="${IMAGE_NAME}" \
+    --format '{{.Names}}' | head -n1
 }
 
-infer_port_from_docker(){
+infer_port_from_docker() {
   local cname="$1"
   local p
   p="$(docker inspect -f '{{range $k,$v := .NetworkSettings.Ports}}{{if eq $k "80/tcp"}}{{(index $v 0).HostPort}}{{end}}{{end}}' "$cname" 2>/dev/null || true)"
   [[ -n "$p" ]] && echo "$p"
 }
 
-# --- commands ----------------------------------------------------------------
-cmd_start(){
-  [[ -f "$COMPOSE_FILE" ]] || die "Compose file not found: $COMPOSE_FILE"
-  local port="${1:-}"; local name="${2:-}"
-  [[ -n "$port" ]] || port="$(find_free_port || true)"; [[ -n "$port" ]] || die "No free ports in $PORT_RANGE"
-  [[ -n "$name" ]] || name="ig-toolbox-$port"
+# --------------------------------------------------------------------
+# Commands
+# --------------------------------------------------------------------
+cmd_start() {
+  [[ -f "${COMPOSE_FILE}" ]] || die "Compose file not found: ${COMPOSE_FILE}"
+
+  local port="${1:-}" name="${2:-}"
+
+  if [[ -z "$port" ]]; then
+    port="$(find_free_port || true)"
+  fi
+  [[ -n "$port" ]] || die "No free ports in ${PORT_RANGE}"
+
+  if [[ -z "$name" ]]; then
+    name="${IMAGE_NAME}-${port}"
+  fi
 
   # Refuse to clash with existing container name
   if docker ps -a --format '{{.Names}}' | grep -qx "$name"; then
-    die "Container '$name' already exists. Choose another name."
+    die "Container '${name}' already exists. Choose another name."
   fi
 
-  echo "🚀 Starting container '$name' with $COMPOSE_FILE on http://localhost:$port/"
+  echo "Starting container '${name}' with ${COMPOSE_FILE} on http://localhost:${port}/"
   save_state "$name" "$port"
 
-  if have op && [[ -f "$ENV_OP_FILE" ]]; then
-    PORT_BIND="$port" CONTAINER_NAME="$name" op run --env-file "$ENV_OP_FILE" -- docker compose -f "$COMPOSE_FILE" up -d
+  if have op && [[ -f "${ENV_OP_FILE}" ]]; then
+    PORT_BIND="${port}" CONTAINER_NAME="${name}" \
+	TOOLBOX_SCRIPTS="$TOOLBOX_SCRIPTS" \
+      op run --env-file "${ENV_OP_FILE}" -- \
+      compose up -d
   else
-    PORT_BIND="$port" CONTAINER_NAME="$name" docker compose -f "$COMPOSE_FILE" up -d
+    PORT_BIND="${port}" CONTAINER_NAME="${name}" \
+      compose up -d
   fi
+
+  cmd_enter "${name}"
 }
 
-cmd_enter(){
+cmd_enter() {
   local name="${1:-}"
   if [[ -z "$name" ]]; then
     name="$(infer_running_name)"
-    [[ -n "$name" ]] || die "No running containers for $IMAGE_NAME. Start one with: $0 start"
+    [[ -n "$name" ]] || die "No running containers for ${IMAGE_NAME}. Start one with: $0 start"
   fi
-  echo "📦 Entering '$name'..."
-  docker exec -it "$name" bash
+  echo "Entering '${name}'..."
+  docker exec -it "${name}" bash
 }
 
-cmd_restart(){
+cmd_restart() {
   local name="${1:-}"
   if [[ -z "$name" ]]; then
     name="$(infer_any_name)"
-    [[ -n "$name" ]] || die "No containers found for $IMAGE_NAME."
+    [[ -n "$name" ]] || die "No containers found for ${IMAGE_NAME}."
   fi
-  echo "🔁 Starting '$name'..."
-  docker start "$name" >/dev/null || die "Failed to start '$name'"
-  echo "✅ $(docker ps --filter name="^${name}$" --format '{{.Names}} -> {{.Status}}  {{.Ports}}')"
+  cmd_stop "${name}"
+  echo "Starting '${name}'..."
+  docker start "${name}" >/dev/null || die "Failed to start '${name}'"
+  echo "$(docker ps --filter name="^${name}$" --format '{{.Names}} -> {{.Status}}  {{.Ports}}')"
+  cmd_enter "${name}"
 }
 
-cmd_stop(){
+cmd_stop() {
   local name="${1:-}"
   if [[ -z "$name" ]]; then
     name="$(infer_running_name)"
-    [[ -n "$name" ]] || die "No running containers found for $IMAGE_NAME."
+    [[ -n "$name" ]] || die "No running containers found for ${IMAGE_NAME}."
   fi
-  echo "🛑 Stopping '$name'..."
-  compose stop "$name" >/dev/null 2>&1 || docker stop "$name" >/dev/null
-  echo "⏹️  $(docker ps -a --filter name="^${name}$" --format '{{.Names}} -> {{.Status}}')"
+  echo "Stopping '${name}'..."
+  compose stop "${name}" >/dev/null 2>&1 || docker stop "${name}" >/dev/null
+  echo "$(docker ps -a --filter name="^${name}$" --format '{{.Names}} -> {{.Status}}')"
 }
 
-cmd_list(){
-  docker ps -a --filter ancestor="$IMAGE_NAME" --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'
+
+cmd_list() {
+  docker ps -a --filter ancestor="${IMAGE_NAME}" \
+    --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'
 }
 
-cmd_logs(){
+cmd_logs() {
   local name="${1:-}"
   if [[ -z "$name" ]]; then
     name="$(infer_any_name)"
     [[ -n "$name" ]] || die "No containers found."
   fi
-  docker logs -f "$name"
+  docker logs -f "${name}"
 }
 
-cmd_url(){
+cmd_url() {
   if get_state 2>/dev/null; then
-    echo "🌐 http://localhost:${PORT}/"
+    echo "http://localhost:${PORT}/"
     return 0
   fi
   local name port
   name="$(infer_running_name)"
   [[ -n "$name" ]] || die "No running containers."
-  port="$(infer_port_from_docker "$name")"
-  [[ -n "$port" ]] || die "Could not determine mapped port for $name"
-  echo "🌐 http://localhost:${port}/"
+  port="$(infer_port_from_docker "${name}")"
+  [[ -n "$port" ]] || die "Could not determine mapped port for ${name}"
+  echo "http://localhost:${port}/"
 }
 
-cmd_rebuild(){
+cmd_rebuild() {
   local name port
   if get_state 2>/dev/null; then
     name="$NAME"
@@ -162,46 +216,53 @@ cmd_rebuild(){
   else
     name="$(infer_any_name)"
     [[ -n "$name" ]] || die "No container found to rebuild."
-    port="$(infer_port_from_docker "$name")"
+    port="$(infer_port_from_docker "${name}")"
+    [[ -n "$port" ]] || die "Could not determine port for ${name}"
   fi
 
-  echo "🔥 Rebuilding container '$name' on port $port..."
-  FIRELY_USERNAME=dummy FIRELY_PASSWORD=dummy PORT_BIND="$port" CONTAINER_NAME="$name" docker compose -f "$COMPOSE_FILE" down --remove-orphans
-  cmd_start "$port" "$name"
+  echo "Rebuilding container '${name}' on port ${port}..."
+
+  PORT_BIND="${port}" CONTAINER_NAME="${name}" \
+    compose down --remove-orphans
+
+  cmd_start "${port}" "${name}"
 }
 
-usage(){
-cat <<EOF
-igctl – compose-centric wrapper for ig-toolbox
+usage() {
+  cat <<EOF
+igctl – compose-centric wrapper for ${IMAGE_NAME}
 
 Usage:
-  igctl start [PORT] [NAME]   Start new container (saves NAME/PORT in $STATE_FILE)
+  igctl start [PORT] [NAME]   Start new container (saves NAME/PORT in ${STATE_FILE})
   igctl enter|bash [NAME]     Exec into running container (defaults to saved/first)
-  igctl restart [NAME]        Start a stopped container (defaults to saved/first)
+  igctl restart [NAME]        Restart a container (defaults to saved/first)
   igctl stop [NAME]           Stop running container (defaults to saved/first)
-  igctl list                  List all ig-toolbox containers
+  igctl list                  List all containers using image '${IMAGE_NAME}'
   igctl logs [NAME]           Follow container logs (defaults to saved/first)
   igctl url                   Show http://localhost:<port>/ for saved/first running
-  igctl rebuild               Rebuild the container
+  igctl rebuild               Rebuild the container via docker compose
 
-Env:
-  IMAGE_NAME     ($IMAGE_NAME)
-  PORT_RANGE     ($PORT_RANGE)
-  ENV_OP_FILE    ($ENV_OP_FILE)
-  COMPOSE_FILE   ($COMPOSE_FILE)
-  STATE_FILE     ($STATE_FILE)
+Env (can be set in .env or shell):
+  IMAGE_NAME     (${IMAGE_NAME})
+  PORT_RANGE     (${PORT_RANGE})
+  ENV_OP_FILE    (${ENV_OP_FILE})
+  COMPOSE_FILE   (${COMPOSE_FILE})
+  STATE_FILE     (${STATE_FILE})
 EOF
 }
 
+# --------------------------------------------------------------------
+# Dispatch
+# --------------------------------------------------------------------
 case "${1:-}" in
-  start) shift; cmd_start "$@";;
+  start)    shift; cmd_start "$@";;
   enter|bash) shift; cmd_enter "$@";;
-  restart) shift; cmd_restart "$@";;
-  stop) shift; cmd_stop "$@";;
-  list|ls) shift; cmd_list;;
-  logs) shift; cmd_logs "$@";;
-  url) shift; cmd_url;;
-  rebuild) shift; cmd_rebuild "$@";;
+  restart)  shift; cmd_restart "$@";;
+  stop)     shift; cmd_stop "$@";;
+  list|ls)  shift; cmd_list;;
+  logs)     shift; cmd_logs "$@";;
+  url)      shift; cmd_url;;
+  rebuild)  shift; cmd_rebuild "$@";;
   ""|-h|--help|help) usage;;
   *) usage; exit 1;;
 esac
