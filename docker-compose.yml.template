@@ -1,16 +1,27 @@
 services:
   ig-toolbox:
-    image: ig-toolbox:latest
-    container_name: ${CONTAINER_NAME}
-    volumes:
-      - .:/workspaces/projects
-      - ${TOOLBOX_SCRIPTS}/toolbox-scripts:/workspaces/scripts:ro
+    image: "${IMAGE_NAME:-ig-toolbox}:local"
+    container_name: "${CONTAINER_NAME:-igtoolbox}"
     working_dir: /workspaces
+
     ports:
-      - "${PORT_BIND}:80"
+      - "${PORT_BIND:-8080}:80"
+
     environment:
-      FIRELY_USERNAME=${FIRELY_USERNAME}
-      FIRELY_PASSWORD=${FIRELY_PASSWORD}
+      LANG: "en_US.UTF-8"
+      LC_ALL: "en_US.UTF-8"
+      FIRELY_USERNAME: ${FIRELY_USERNAME}
+      FIRELY_PASSWORD: ${FIRELY_PASSWORD}
       TZ: ${TZ:-Europe/Amsterdam}
+
+    volumes:
+      # Mount the project directory, adjust this to match the project layout
+      - ./projects:/workspaces
+      
+      # Mount toolbox scripts from the ig-toolbox repo (read-only)
+      - ${TOOLBOX_SCRIPTS}:/workspaces/scripts:ro
+
     stdin_open: true
     tty: true
+
+    restart: "no"
