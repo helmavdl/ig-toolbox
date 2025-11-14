@@ -71,10 +71,6 @@ find_free_port() {
   return 1
 }
 
-d_compose() {
-  docker compose -f "${COMPOSE_FILE}" "$@"
-}
-
 save_state() {
   local name="$1" port="$2"
   printf 'NAME=%s\nPORT=%s\n' "$name" "$port" > "${STATE_FILE}"
@@ -192,7 +188,7 @@ cmd_stop() {
     [[ -n "$name" ]] || die "No running containers found for ${IMAGE_NAME}."
   fi
   echo "Stopping '${name}'..."
-  d_compose stop "${name}" >/dev/null 2>&1 || docker stop "${name}" >/dev/null
+  docker stop "${name}" >/dev/null
   echo "$(docker ps -a --filter name="^${name}$" --format '{{.Names}} -> {{.Status}}')"
 }
 
@@ -241,7 +237,7 @@ cmd_rebuild() {
   PORT_BIND="$port" \
   CONTAINER_NAME="$name" \
   TOOLBOX_SCRIPTS="$TOOLBOX_SCRIPTS" \
-    d_compose down --remove-orphans
+  	docker compose -f "${COMPOSE_FILE}" down --remove-orphans
 
   cmd_start "${port}" "${name}"
 }
