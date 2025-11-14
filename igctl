@@ -60,7 +60,7 @@ find_free_port() {
   return 1
 }
 
-compose() {
+d_compose() {
   docker compose -f "${COMPOSE_FILE}" "$@"
 }
 
@@ -137,10 +137,10 @@ cmd_start() {
     PORT_BIND="${port}" CONTAINER_NAME="${name}" \
 	TOOLBOX_SCRIPTS="$TOOLBOX_SCRIPTS" \
       op run --env-file "${ENV_OP_FILE}" -- \
-      compose up -d
+      docker compose -f "${COMPOSE_FILE}" up -d
   else
     PORT_BIND="${port}" CONTAINER_NAME="${name}" \
-      compose up -d
+      docker compose -f "${COMPOSE_FILE}" up -d
   fi
 
   cmd_enter "${name}"
@@ -176,7 +176,7 @@ cmd_stop() {
     [[ -n "$name" ]] || die "No running containers found for ${IMAGE_NAME}."
   fi
   echo "Stopping '${name}'..."
-  compose stop "${name}" >/dev/null 2>&1 || docker stop "${name}" >/dev/null
+  d_compose stop "${name}" >/dev/null 2>&1 || docker stop "${name}" >/dev/null
   echo "$(docker ps -a --filter name="^${name}$" --format '{{.Names}} -> {{.Status}}')"
 }
 
@@ -223,7 +223,7 @@ cmd_rebuild() {
   echo "Rebuilding container '${name}' on port ${port}..."
 
   PORT_BIND="${port}" CONTAINER_NAME="${name}" \
-    compose down --remove-orphans
+    d_compose down --remove-orphans
 
   cmd_start "${port}" "${name}"
 }
