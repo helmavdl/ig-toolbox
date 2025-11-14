@@ -1,0 +1,52 @@
+# YQ (v4) program to convert sushi-config.yaml -> package.json
+# Usage: yq -r -f scripts/sushi2pkg.yq sushi-config.yaml > package.json
+{
+  name: .id,
+  version: .version,
+  type: "IG",
+  
+  # take the date from sushi-config.yaml or default to now
+  date: (.date // (now | strftime("%Y%m%d%H%M%S"))),
+  title: .title,
+  description: .description,
+  canonical: .canonical,
+  url: (. as $root
+       | ($root.canonical // "" | select(. != "")) as $c
+       | ($root.id // "" | select(. != "")) as $id
+       | if ($c != "" and $id != "") then ($c + "/ImplementationGuide/" + $id) else null end),
+  license: .license,
+  author: .publisher,
+  jurisdiction: (.jurisdiction // null),
+
+  # fhirVersions must be an array
+  fhirVersions:
+    ( (.fhirVersion // null) as $fv
+      | if $fv == null then []
+        elif ($fv | type) == "array" then $fv
+        else [ $fv ]
+        end ),
+
+  # Dependencies normalized to { "<pkg-id>": "<version>" }
+  dependencies:
+    ( (.dependencies // {} )
+      | with_entries(
+          .value = ( if (.value | type) == "string"
+                     then .value
+                     else (.value.version // .value["version"])
+                     end )
+        ) ),
+
+  copyrightYear: (.copyrightYear // null),
+
+  # Contacts -> maintainers [{name,email}]
+  maintainers:
+    ( (.contact // [])
+      | map({
+          name: (.name // null),
+          email: ( (.telecom // [])
+                   | map(select(.system == "email") | .value)
+                   | (.[0] // null) )
+        })
+      | map( with_entries(select(.value != null)) )
+      | map(select(length > 0)) )
+}
