@@ -234,7 +234,7 @@ cmd_rebuild() {
 
 usage() {
   cat <<EOF
-igctl – compose-centric wrapper for ${IMAGE_NAME}
+igctl - compose-centric wrapper for ${IMAGE_NAME}
 
 Usage:
   igctl start [PORT] [NAME]   Start new container (saves NAME/PORT in ${STATE_FILE})
