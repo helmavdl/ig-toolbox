@@ -6,8 +6,8 @@
 # Location of the script
 ME_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-# assume we are in <root>/scripts
-ROOT_DIR="$( dirname "$ME_DIR" )"
+# this script is in the root of the project
+ROOT_DIR="$ME_DIR"
 
 # date (now)
 DT=$(date +"%Y-%m-%d")
@@ -139,16 +139,18 @@ cmd_start() {
   if have op && [[ -f "${ENV_OP_FILE}" ]]; then
     # ---- 1Password mode ----
     echo "Using 1Password secrets from ${ENV_OP_FILE}"
-    PORT_BIND="${port}" \
+
+	PORT_BIND="${port}" \
     CONTAINER_NAME="${name}" \
     TOOLBOX_SCRIPTS="${TOOLBOX_SCRIPTS}" \
-      op run --env-file "${ENV_OP_FILE}" -- \
+	  op run --env-file "${ENV_OP_FILE}" -- \
       docker compose -f "${COMPOSE_FILE}" up -d
 
   else
     # ---- Standard environment mode ----
     echo "Using environment variables + .env (no ${ENV_OP_FILE})"
-    PORT_BIND="${port}" \
+    
+	PORT_BIND="${port}" \
     CONTAINER_NAME="${name}" \
     TOOLBOX_SCRIPTS="${TOOLBOX_SCRIPTS}" \
       docker compose -f "${COMPOSE_FILE}" up -d
