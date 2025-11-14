@@ -107,16 +107,19 @@ node --version
 npm --version
 EOF
 
-
 # ----------------------------------------------------
 # Node CLIs (float to latest; record resolved versions)
 # ----------------------------------------------------
 RUN <<'EOF' bash
 set -e
 npm install -g fsh-sushi gofsh @bonfhir/cli
-(sushi   --version 2>/dev/null | xargs -I{} bash -lc 'echo RESOLVED_SUSHI_VERSION="{}" >> /etc/environment') || true
-(gofsh   --version 2>/dev/null | xargs -I{} bash -lc 'echo RESOLVED_GOFSH_VERSION="{}" >> /etc/environment') || true
-(bonfhir --version 2>/dev/null | xargs -I{} bash -lc 'echo RESOLVED_BONFHIR_VERSION="{}" >> /etc/environment') || true
+
+mkdir -p /opt/ig-toolbox-meta
+{
+  (sushi   --version 2>/dev/null | xargs -I{} echo "RESOLVED_SUSHI_VERSION={}") || true
+  (gofsh   --version 2>/dev/null | xargs -I{} echo "RESOLVED_GOFSH_VERSION={}") || true
+  (bonfhir --version 2>/dev/null | xargs -I{} echo "RESOLVED_BONFHIR_VERSION={}") || true
+} >> /opt/ig-toolbox-meta/node.env
 EOF
 
 
@@ -150,10 +153,13 @@ EOF
 RUN <<'EOF' bash
 set -e
 dotnet tool install --tool-path /usr/local/bin firely.terminal --version "${FIRELY_TERMINAL_VERSION}"
-echo "RESOLVED_DOTNET_CHANNEL=${DOTNET_CHANNEL}" >> /etc/environment
-echo "RESOLVED_FIRELY_TERMINAL_VERSION=${FIRELY_TERMINAL_VERSION}" >> /etc/environment
-EOF
 
+mkdir -p /opt/ig-toolbox-meta
+{
+  echo "RESOLVED_DOTNET_CHANNEL=${DOTNET_CHANNEL}"
+  echo "RESOLVED_FIRELY_TERMINAL_VERSION=${FIRELY_TERMINAL_VERSION}"
+} >> /opt/ig-toolbox-meta/dotnet.env
+EOF
 
 # ----------------------------------------------------
 # HAPI FHIR CLI stage
@@ -170,6 +176,8 @@ mkdir -p /usr/share/hapi-fhir-cli
 curl -fsSL "https://github.com/hapifhir/hapi-fhir/releases/download/v${HAPI_CLI_VERSION}/hapi-fhir-${HAPI_CLI_VERSION}-cli.zip" -o /tmp/hapi-cli.zip
 unzip -q /tmp/hapi-cli.zip -d /usr/share/hapi-fhir-cli
 rm -f /tmp/hapi-cli.zip
+mkdir -p /opt/ig-toolbox-meta
+echo "RESOLVED_HAPI_FHIR_CLI_VERSION={${HAPI_CLI_VERSION}" >> /opt/ig-toolbox-meta/hapi.env
 EOF
 
 
@@ -181,17 +189,17 @@ FROM base AS igpublisher
 RUN <<'EOF' bash
 set -euo pipefail
 
-mkdir -p /usr/share/igpublisher
+mkdir -p /usr/share/igpublisher /opt/ig-toolbox-meta
 TAG="$(curl -fsSL ${IG_PUBLISHER_API} | jq -r .tag_name || true)"
 
 if [[ -z "$TAG" || "$TAG" == "null" ]]; then
   echo "GitHub API unavailable; using latest jar"
   curl -fsSL ${IG_PUBLISHER_LATEST} -o /usr/share/igpublisher/publisher.jar
-  echo "RESOLVED_IG_PUBLISHER_TAG=latest" >> /etc/environment
+  echo "RESOLVED_IG_PUBLISHER_TAG=latest" >> /opt/ig-toolbox-meta/igpublisher.env
 else
   echo "IG Publisher tag: $TAG"
   curl -fsSL "https://github.com/HL7/fhir-ig-publisher/releases/download/${TAG}/publisher.jar" -o /usr/share/igpublisher/publisher.jar
-  echo "RESOLVED_IG_PUBLISHER_TAG=${TAG}" >> /etc/environment
+  echo "RESOLVED_IG_PUBLISHER_TAG=${TAG}" >> /opt/ig-toolbox-meta/igpublisher.env
 fi
 
 printf '%s\n' '#!/usr/bin/env bash' 'exec java -jar /usr/share/igpublisher/publisher.jar "$@"' > /usr/bin/publisher
@@ -208,16 +216,17 @@ RUN <<'EOF' bash
 
 set -euo pipefail
 
+mkdir -p /opt/ig-toolbox-meta
 TAG="$(curl -fsSL ${FHIR_VALIDATOR_API} | jq -r .tag_name || true)"
 
 if [[ -z "$TAG" || "$TAG" == "null" ]]; then
   echo "GitHub API unavailable; using latest validator"
   curl -fsSL ${FHIR_VALIDATOR_LATEST} -o /usr/share/validator_cli.jar
-  echo "RESOLVED_FHIR_VALIDATOR_TAG=latest" >> /etc/environment
+  echo "RESOLVED_FHIR_VALIDATOR_TAG=latest" >> /opt/ig-toolbox-meta/validator.env
 else
   echo "FHIR Validator tag: $TAG"
   curl -fsSL "https://github.com/hapifhir/org.hl7.fhir.core/releases/download/${TAG}/validator_cli.jar" -o /usr/share/validator_cli.jar
-  echo "RESOLVED_FHIR_VALIDATOR_TAG=${TAG}" >> /etc/environment
+  echo "RESOLVED_FHIR_VALIDATOR_TAG=${TAG}" >> /opt/ig-toolbox-meta/validator.env
 fi
 EOF
 
@@ -227,6 +236,11 @@ EOF
 # ----------------------------------------------------
 FROM base AS final
 
+# Make build args visible in this stage for labels
+ARG NODE_VERSION
+ARG DOTNET_CHANNEL
+ARG FIRELY_TERMINAL_VERSION
+ARG HAPI_CLI_VERSION
 ARG JAVA_MAJOR
 ARG TARGETARCH
 
@@ -247,13 +261,13 @@ ENV JAVA_TOOL_OPTIONS="-Xms6g -Xmx6g \
 # Node from node stage
 COPY --from=node /usr/local/node /usr/local/node
 ENV PATH="/usr/local/node/bin:/usr/local/bin:${PATH}"
-COPY --from=node /etc/environment /etc/environment
 
 # .NET + Firely from dotnet stage
 COPY --from=dotnet /usr/share/dotnet /usr/share/dotnet
 RUN ln -s /usr/share/dotnet/dotnet /usr/bin/dotnet
-COPY --from=dotnet /usr/local/bin/fhir /usr/local/bin/fhir
-COPY --from=dotnet /etc/environment /etc/environment
+
+# Copy the entire tool-path directory, not just the shim
+COPY --from=dotnet /usr/local/bin/ /usr/local/bin/
 
 # HAPI CLI
 COPY --from=hapi /usr/share/hapi-fhir-cli /usr/share/hapi-fhir-cli
@@ -262,11 +276,27 @@ ENV PATH="$PATH:/usr/share/hapi-fhir-cli"
 # IG Publisher and launcher
 COPY --from=igpublisher /usr/share/igpublisher /usr/share/igpublisher
 COPY --from=igpublisher /usr/bin/publisher /usr/bin/publisher
-COPY --from=igpublisher /etc/environment /etc/environment
 
 # FHIR Validator
 COPY --from=validator /usr/share/validator_cli.jar /usr/share/validator_cli.jar
-COPY --from=validator /etc/environment /etc/environment
+
+# Bring in version metadata from each stage
+COPY --from=node        /opt/ig-toolbox-meta/node.env        /opt/ig-toolbox-meta/node.env
+COPY --from=dotnet      /opt/ig-toolbox-meta/dotnet.env      /opt/ig-toolbox-meta/dotnet.env
+COPY --from=hapi        /opt/ig-toolbox-meta/hapi.env        /opt/ig-toolbox-meta/hapi.env
+COPY --from=igpublisher /opt/ig-toolbox-meta/igpublisher.env /opt/ig-toolbox-meta/igpublisher.env
+COPY --from=validator   /opt/ig-toolbox-meta/validator.env   /opt/ig-toolbox-meta/validator.env
+
+# Merge them into /etc/environment once
+RUN <<'EOF' bash
+set -e
+if [[ -d /opt/ig-toolbox-meta ]]; then
+  for f in /opt/ig-toolbox-meta/*.env; do
+    [[ -f "$f" ]] || continue
+    cat "$f" >> /etc/environment
+  done
+fi
+EOF
 
 # ----------------------------------------------------
 # Ruby gems (float to latest)
@@ -327,7 +357,11 @@ EOF
 WORKDIR /workspaces
 ENTRYPOINT ["/entrypoint.sh"]
 
-# Provenance labels
-LABEL org.opencontainers.image.title="fhir-tooling-suite" \
-      org.opencontainers.image.description="Multi-stage, multi-arch FHIR tooling image. Latest-at-build-time IG Publisher & Validator; pinned Firely Terminal/HAPI CLI." \
-      org.opencontainers.image.vendor="Your Org"
+# Image metadata / provenance labels
+LABEL org.opencontainers.image.title="ig-toolbox" \
+      org.opencontainers.image.description="FHIR tooling image with SUSHI, GoFSH, BonFHIR, IG Publisher, Validator, Firely Terminal, HAPI CLI, etc." \
+      org.opencontainers.image.vendor="VZVZ" \
+      ig.toolbox.node.version="${NODE_VERSION}" \
+      ig.toolbox.dotnet.channel="${DOTNET_CHANNEL}" \
+      ig.toolbox.firely.terminal.version="${FIRELY_TERMINAL_VERSION}" \
+      ig.toolbox.hapi.cli.version="${HAPI_CLI_VERSION}"
