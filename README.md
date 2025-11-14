@@ -28,6 +28,8 @@ This fork is based on this excellent idea but adds updates and extras:
 
 # Original README content
 
+NOTE 2025-11 this is the original README content of the upstream project, but some of it might no longer be true for the current project
+
 > To learn how to get started, head over to our tutorial at https://bonfhir.dev/docs/guides/ig-toolbox
 
 ## Usage
