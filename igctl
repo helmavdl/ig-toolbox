@@ -119,14 +119,10 @@ cmd_start() {
 
   local port="${1:-}" name="${2:-}"
 
-  if [[ -z "$port" ]]; then
-    port="$(find_free_port || true)"
-  fi
+  [[ -n "$port" ]] || port="$(find_free_port || true)"
   [[ -n "$port" ]] || die "No free ports in ${PORT_RANGE}"
 
-  if [[ -z "$name" ]]; then
-    name="${IMAGE_NAME}-${port}"
-  fi
+  [[ -n "$name" ]] || name="${IMAGE_NAME}-${port}"
 
   # Refuse to clash with existing container name
   if docker ps -a --format '{{.Names}}' | grep -qx "$name"; then
