@@ -75,17 +75,17 @@ install-dependencies: package.json
 # Build Implementation Guide (Full with documentation)
 .PHONY: build-ig
 build-ig:
-	@echo "Building Full Implementation Guide with version $(VERSION)..."
-	java -jar /usr/local/publisher.jar -ig ig.ini
-	@echo "Fixing extension version references..."
-	@python3 scripts/fix_extension_versions.py output
+	@echo "Building Full Implementation Guide of $(PACKAGE_NAME) with version $(VERSION)..."
+	@publisher -ig ig.ini
+# 	@echo "Fixing extension version references..."
+# 	@python3 scripts/fix_extension_versions.py output
 	@if [ ! -f ./output/package.tgz ]; then \
 		echo "ERROR: Build did not create ./output/package.tgz"; \
 		exit 1; \
 	fi
-	@echo "Copying package.tgz to: ./output/koppeltaalv2-$(VERSION).tgz"
-	@cp ./output/package.tgz ./output/koppeltaalv2-$(VERSION).tgz
-	@echo "Successfully created: ./output/koppeltaalv2-$(VERSION).tgz"
+	@echo "Copying package.tgz to: ./output/$(PACKAGE_NAME)-$(VERSION).tgz"
+	@cp ./output/package.tgz ./output/$(PACKAGE_NAME)-$(VERSION).tgz
+	@echo "Successfully created: ./output/$(PACKAGE_NAME)-$(VERSION).tgz"
 
 # Build Implementation Guide (Minimal for servers with snapshots)
 # This target creates a minimal FHIR package optimized for FHIR server deployment by:
