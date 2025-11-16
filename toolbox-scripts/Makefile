@@ -11,7 +11,7 @@ DOTNET_TOOLS := $(HOME)/.dotnet/tools
 # Detect whether this is a FSH/SUSHI environment
 SUSHI_CONFIG := $(wildcard sushi-config.yaml)
 
-# Only try to extract VERSION if sushi-config.yaml exists
+# Only try to extract info if sushi-config.yaml exists
 ifeq ($(SUSHI_CONFIG),)
  	# No sushi-config
     VERSION :=
