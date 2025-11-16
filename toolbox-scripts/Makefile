@@ -62,15 +62,6 @@ package.json:
 .PHONY: install-dependencies
 install-dependencies: package.json
 	@$(SCRIPTS)/install-fhir-dependencies.sh
-# 	@echo "Installing FHIR dependencies..."
-# 	-@fhir restore
-# 	@jq -r '.dependencies | to_entries[] | "\(.key)@\(.value)"' package.json | while read -r package; do \
-# 		if [ "$${package#nictiz}" != "$${package}" ]; then \
-# 			echo "Inflating $$package..."; \
-# 			fhir inflate --package $$package || { echo "Failed to inflate $$package"; exit 1; }; \
-# 		fi \
-# 	done
-# 	@echo "All dependencies installed."
 
 # Build Implementation Guide (Full with documentation)
 .PHONY: build-ig
