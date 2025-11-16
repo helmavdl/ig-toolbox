@@ -49,7 +49,7 @@ build: install-dependencies build-ig
 .PHONY: build-minimal
 build-minimal: install-dependencies build-ig-minimal
 
-# Login to FHIR
+# Login to Simplifier
 .PHONY: login
 login:
 	$(FHIR) login email=$(FIRELY_USERNAME) password=$(FIRELY_PASSWORDD)
