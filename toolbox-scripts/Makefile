@@ -8,11 +8,30 @@ SCRIPTS := $(MAKEFILE_DIR)
 FHIR := fhir
 DOTNET_TOOLS := $(HOME)/.dotnet/tools
 
-# Fetch version from sushi-config.yaml with error handling
-export VERSION := $(shell grep '^version:' sushi-config.yaml | sed 's/version: //' | tr -d '[:space:]')
-ifeq ($(VERSION),)
-	$(error "Could not extract version from sushi-config.yaml")
+# Detect whether this is a FSH/SUSHI environment
+SUSHI_CONFIG := $(wildcard sushi-config.yaml)
+
+# Only try to extract VERSION if sushi-config.yaml exists
+ifeq ($(SUSHI_CONFIG),)
+ 	# No sushi-config
+    VERSION :=
+	PACKAGE_NAME :=
+else
+    # Fetch version from sushi-config.yaml with error handling
+    VERSION := $(shell grep '^version:' sushi-config.yaml | sed 's/version: //' | tr -d '[:space:]')
+    ifeq ($(VERSION),)
+        $(error Could not extract version from sushi-config.yaml)
+    endif
+	
+	# Fetch package name from sushi-config.yaml with error handling
+	PACKAGE_NAME := $(shell grep '^id:' sushi-config.yaml | sed 's/id: //' | tr -d '[:space:]')
+	ifeq ($(PACKAGE_NAME),)
+		$(error "Could not extract package id from sushi-config.yaml")
+	endif
 endif
+
+export VERSION
+export PACKAGE_NAME
 
 # Export PATH with dotnet tools
 export PATH := $(PATH):$(DOTNET_TOOLS)
