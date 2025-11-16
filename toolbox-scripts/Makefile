@@ -78,6 +78,11 @@ build-ig:
 	@cp ./output/package.tgz ./output/$(PACKAGE_NAME)-$(VERSION).tgz
 	@echo "Successfully created: ./output/$(PACKAGE_NAME)-$(VERSION).tgz"
 
+
+# Show version
+.PHONY: version
+version:
+	@echo "Version: $(VERSION)"
 # Build Implementation Guide (Minimal for servers with snapshots)
 # This target creates a minimal FHIR package optimized for FHIR server deployment by:
 # 1. Using SUSHI/IG Publisher to generate resources with snapshots
