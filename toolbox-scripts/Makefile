@@ -56,11 +56,14 @@ login:
 
 # Build package.json
 package.json: 
-	@yq -r -f $(SCRIPTS)/sushi2pkg.yq sushi-config.yaml > package.json
+	ifeq ($(SUSHI_CONFIG),)
+		@echo $(error no package.json found)
+	else
+		@yq -r -f $(SCRIPTS)/sushi2pkg.yq sushi-config.yaml > package.json
+	endif
 
 # Restore packages and create fhirpkg.lock.json
-fhirpkg: package.json
-	@echo "Lock file missing or outdated — running fhir restore..."
+fhirpkg.lock.json: package.json
 	fhir restore
 
 
