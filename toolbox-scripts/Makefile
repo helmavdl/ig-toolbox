@@ -58,11 +58,21 @@ login:
 package.json: 
 	@yq -r -f $(SCRIPTS)/sushi2pkg.yq sushi-config.yaml > package.json
 
+# Restore packages and create fhirpkg.lock.json
+fhirpkg: package.json
+	@echo "Lock file missing or outdated — running fhir restore..."
+	fhir restore
+
+
 # Install dependencies
 .PHONY: install-dependencies
 install-dependencies: package.json
 	@$(SCRIPTS)/install-fhir-dependencies.sh
 
+# Symlink helper scripts in /usr/local/bin
+.PHONY: install-helper-scripts
+install-helper-scripts:
+	@ln -fs $(SCRIPTS)/fval.sh /usr/local/bin/fval
 # Build Implementation Guide (Full with documentation)
 .PHONY: build-ig
 build-ig:
