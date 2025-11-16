@@ -29,6 +29,7 @@ ENV FHIR_VALIDATOR_API="https://api.github.com/repos/hapifhir/org.hl7.fhir.core/
 ENV IG_PUBLISHER_LATEST="https://github.com/HL7/fhir-ig-publisher/releases/latest/download/publisher.jar"
 ENV FHIR_VALIDATOR_LATEST="https://github.com/hapifhir/org.hl7.fhir.core/releases/latest/download/validator_cli.jar"
 ENV DOTNET_INSTALLER_URL="https://dot.net/v1/dotnet-install.sh"
+ENV HAPI_CLI_URL="https://github.com/hapifhir/hapi-fhir/releases/download/v${HAPI_CLI_VERSION}/hapi-fhir-${HAPI_CLI_VERSION}-cli.zip"
 
 # ----------------------------------------------------
 # Base OS deps (arch-agnostic)
@@ -173,7 +174,7 @@ ENV PATH="$PATH:/usr/share/hapi-fhir-cli"
 RUN <<'EOF' bash
 set -e
 mkdir -p /usr/share/hapi-fhir-cli
-curl -fsSL "https://github.com/hapifhir/hapi-fhir/releases/download/v${HAPI_CLI_VERSION}/hapi-fhir-${HAPI_CLI_VERSION}-cli.zip" -o /tmp/hapi-cli.zip
+curl -fsSL "${HAPI_CLI_URL}" -o /tmp/hapi-cli.zip
 unzip -q /tmp/hapi-cli.zip -d /usr/share/hapi-fhir-cli
 rm -f /tmp/hapi-cli.zip
 mkdir -p /opt/ig-toolbox-meta
