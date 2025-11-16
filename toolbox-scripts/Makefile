@@ -66,16 +66,27 @@ package.json:
 fhirpkg.lock.json: package.json
 	fhir restore
 
+# Set Firely Terminal to Advanced validator (vnext)
+fvnext:
+	fhir config Validator Advanced
+
+# Set Firely Terminal to Regular validator (the old one)
+fvold:
+	fhir config Validator Regular
+
 
 # Install dependencies
 .PHONY: install-dependencies
 install-dependencies: package.json
 	@$(SCRIPTS)/install-fhir-dependencies.sh
 
+
 # Symlink helper scripts in /usr/local/bin
 .PHONY: install-helper-scripts
 install-helper-scripts:
 	@ln -fs $(SCRIPTS)/fval.sh /usr/local/bin/fval
+
+
 # Build Implementation Guide (Full with documentation)
 .PHONY: build-ig
 build-ig:
