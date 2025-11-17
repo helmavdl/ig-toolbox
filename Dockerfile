@@ -269,11 +269,12 @@ ARG TARGETARCH
 # TARGETARCH is "amd64" or "arm64", which matches Debian suffixes.
 ENV JAVA_HOME="/usr/lib/jvm/java-${JAVA_MAJOR}-openjdk-${TARGETARCH}"
 ENV JAVA_TOOL_OPTIONS="-Xms6g -Xmx6g \
-               -XX:+UseG1GC \
-               -XX:MaxGCPauseMillis=200 \
-               -XX:+UseStringDeduplication \
-               -XX:+AlwaysPreTouch \
-               -XX:+ParallelRefProcEnabled"
+  -XX:+UseG1GC \
+  -XX:MaxGCPauseMillis=200 \
+  -XX:+UseStringDeduplication \
+  -XX:+AlwaysPreTouch \
+  -XX:+ParallelRefProcEnabled \
+  -Dfile.encoding=UTF-8" 
 
 
 # Node from node stage
