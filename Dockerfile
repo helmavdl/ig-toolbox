@@ -29,6 +29,7 @@ ENV FHIR_VALIDATOR_API="https://api.github.com/repos/hapifhir/org.hl7.fhir.core/
 ENV IG_PUBLISHER_LATEST="https://github.com/HL7/fhir-ig-publisher/releases/latest/download/publisher.jar"
 ENV FHIR_VALIDATOR_LATEST="https://github.com/hapifhir/org.hl7.fhir.core/releases/latest/download/validator_cli.jar"
 ENV DOTNET_INSTALLER_URL="https://dot.net/v1/dotnet-install.sh"
+ENV NTS_PROXY_URL="https://raw.githubusercontent.com/Nictiz/snippets/refs/heads/main/NTS-proxy/NTS-proxy.py"
 ENV HAPI_CLI_URL="https://github.com/hapifhir/hapi-fhir/releases/download/v${HAPI_CLI_VERSION}/hapi-fhir-${HAPI_CLI_VERSION}-cli.zip"
 
 # ----------------------------------------------------
@@ -44,6 +45,7 @@ apt-get install -y --no-install-recommends \
   ca-certificates curl gnupg unzip xz-utils \
   jq yq \
   locales git build-essential zlib1g-dev \
+  mitmproxy python3-requests python3-termcolor \
   ruby-full \
   "openjdk-${JAVA_MAJOR}-jre" \
   plantuml graphviz \
@@ -231,6 +233,21 @@ else
 fi
 EOF
 
+# ----------------------------------------------------
+#  NTS proxy stage to use the Dutch Terminology server in the validation
+# ----------------------------------------------------
+FROM base AS ntsproxy
+
+RUN <<'EOF' bash
+set -euo pipefail
+
+mkdir -p /usr/share/ntsproxy /opt/ig-toolbox-meta
+curl -fsSL "${NTS_PROXY_URL}" -o /usr/share/ntsproxy/NTS-proxy.py
+
+TAG="$(mitmproxy --version | cut -d':' -f2 || true)"
+
+echo "RESOLVED_MITMPROXY_TAG=${TAG}" >> /opt/ig-toolbox-meta/mitmproxy.env
+EOF
 
 # ----------------------------------------------------
 # Final image: assemble tools, add scripts
@@ -281,12 +298,18 @@ COPY --from=igpublisher /usr/bin/publisher /usr/bin/publisher
 # FHIR Validator
 COPY --from=validator /usr/share/validator_cli.jar /usr/share/validator_cli.jar
 
+# Proxy for NTS server
+COPY --from=ntsproxy /usr/share/ntsproxy /usr/share/ntsproxy
+RUN ln -s /usr/share/ntsproxy/ntsproxy.py /usr/bin/ntsproxy.py
+
+
 # Bring in version metadata from each stage
 COPY --from=node        /opt/ig-toolbox-meta/node.env        /opt/ig-toolbox-meta/node.env
 COPY --from=dotnet      /opt/ig-toolbox-meta/dotnet.env      /opt/ig-toolbox-meta/dotnet.env
 COPY --from=hapi        /opt/ig-toolbox-meta/hapi.env        /opt/ig-toolbox-meta/hapi.env
 COPY --from=igpublisher /opt/ig-toolbox-meta/igpublisher.env /opt/ig-toolbox-meta/igpublisher.env
 COPY --from=validator   /opt/ig-toolbox-meta/validator.env   /opt/ig-toolbox-meta/validator.env
+COPY --from=ntsproxy    /opt/ig-toolbox-meta/mitmproxy.env   /opt/ig-toolbox-meta/mitmproxy.env
 
 # Merge them into /etc/environment once
 RUN <<'EOF' bash

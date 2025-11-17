@@ -16,7 +16,15 @@ vjar=${ROOT_DIR}/../profielen/validator/validator_cli.jar
 if [[ "${ME_DIR}" == *'scripts'* || "${ME_DIR}" == *'usr/local/'* ]]; then
   # we are in an ig-toolbox container
   ROOT_DIR='/workspaces'
+
   vjar='/usr/share/validator_cli.jar'
+
+  TXOPTION_FILE=$HOME/.txoption
+  txoption=""
+  [[ -f "$TXOPTION_FILE" ]] && txoption=$(<"$TXOPTION_FILE")
+
+else
+  txoption=""
 fi
 
 # find out the project name
@@ -103,6 +111,7 @@ fi
 java -jar ${vjar} ${fhir} ${projectIG}  ${IGs} \
   -no-extensible-binding-warnings \
   -show-message-ids \
+  ${txoption} \
   ${jurisdiction_param} \
   ${advisor_param} \
   ${FILTERED_FILES[@]} \

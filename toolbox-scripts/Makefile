@@ -54,6 +54,13 @@ build-minimal: install-dependencies build-ig-minimal
 login:
 	@$(FHIR) login email=$(FIRELY_USERNAME) password=$(FIRELY_PASSWORDD)
 
+# Run the mitmproxy
+.PHONY: set-txoption
+set-txoption:
+	@echo "Setting the tx option"
+	@$(SCRIPTS)/set-tx-server.sh
+	
+
 # Build package.json
 package.json: 
 	ifeq ($(SUSHI_CONFIG),)

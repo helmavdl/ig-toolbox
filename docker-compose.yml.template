@@ -16,6 +16,8 @@ services:
       # in the container; if not set, they’re simply empty with no warnings.
       FIRELY_USERNAME:
       FIRELY_PASSWORD:
+      NTS_USER:
+      NTS_PASS:
       
     volumes:
       # Mount the project directory, adjust this to match the project layout
