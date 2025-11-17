@@ -3,6 +3,8 @@ services:
     image: "${IMAGE_NAME:-ig-toolbox}:local"
     container_name: "${CONTAINER_NAME:-igtoolbox}"
     working_dir: /workspaces
+    tmpfs:
+      - /tmp:rw,exec,nosuid,nodev,size=1024m
 
     ports:
       - "${PORT_BIND:-8080}:80"
