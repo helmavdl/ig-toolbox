@@ -52,7 +52,7 @@ build-minimal: install-dependencies build-ig-minimal
 # Login to Simplifier
 .PHONY: login
 login:
-	-$(FHIR) login email=$(FIRELY_USERNAME) password=$(FIRELY_PASSWORDD)
+	@$(FHIR) login email=$(FIRELY_USERNAME) password=$(FIRELY_PASSWORDD)
 
 # Build package.json
 package.json: 
