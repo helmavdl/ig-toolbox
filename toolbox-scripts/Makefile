@@ -41,6 +41,10 @@ export PATH := $(PATH):$(DOTNET_TOOLS)
 .PHONY: all
 all: build
 
+# init
+.PHONY: init
+init: login install-helper-scripts install-dependencies set-txoption
+
 # Build target (full documentation package)
 .PHONY: build
 build: install-dependencies build-ig
