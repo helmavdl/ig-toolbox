@@ -96,6 +96,7 @@ install-dependencies: package.json
 .PHONY: install-helper-scripts
 install-helper-scripts:
 	@ln -fs $(SCRIPTS)/fval.sh /usr/local/bin/fval
+	@ln -fs $(SCRIPTS)/ival.sh /usr/local/bin/ival
 	@ln -fs $(SCRIPTS)/vval.sh /usr/local/bin/vval
 
 
