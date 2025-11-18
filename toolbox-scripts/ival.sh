@@ -37,6 +37,11 @@ TEMP_DIR="${TEMP_DIR:-/tmp/temp}"
 # Where to copy the finished site on the host
 HOST_OUT="${HOST_OUT:-$PWD/output}"   # mapped to ./output in compose
 
+# Find out which terminology server to use
+TXOPTION_FILE=$HOME/.txoption
+txoption=""
+[[ -f "$TXOPTION_FILE" ]] && txoption=$(<"$TXOPTION_FILE")
+
 # Extra args you might want to pass through to the Publisher
 EXTRA_ARGS="${EXTRA_ARGS:-}"
 
@@ -67,7 +72,7 @@ PCT_FLAGS=""
 # java ${PCT_FLAGS} ${JVM_FLAGS} -XshowSettings:vm -version 2>&1 | sed -n '1,120p'
 
 # Run the IG Publisher
-java ${PCT_FLAGS} ${JVM_FLAGS} -jar "$JAR_PATH" -ig "$IG_INI" -rapido $EXTRA_ARGS
+java ${PCT_FLAGS} ${JVM_FLAGS} -jar "$JAR_PATH" -ig "$IG_INI" $txoption -rapido $EXTRA_ARGS
 
 end_ts=$(date +%s)
 echo "==> Publisher finished in $((end_ts - start_ts))s"
