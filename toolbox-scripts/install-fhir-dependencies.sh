@@ -17,9 +17,9 @@ DT=$(date +"%Y-%m-%d")
 echo "Installing FHIR dependencies..."
 fhir restore
 jq -r '.dependencies | to_entries[] | "\(.key)@\(.value)"' package.json | while read -r package; do 
-	if [ "$${package#nictiz}" != "$${package}" ]; then 
-		echo "Inflating $$package..."; 
-		fhir inflate --package $$package || { echo "Failed to inflate $$package"; exit 1; }; 
+	if [ "${package#nictiz}" != "${package}" ]; then 
+		echo "Inflating $package..."; 
+		fhir inflate --package $package || { echo "Failed to inflate $package"; exit 1; }; 
 	fi 
 done
 echo "All dependencies installed."
