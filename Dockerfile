@@ -238,11 +238,29 @@ EOF
 # ----------------------------------------------------
 FROM base AS ntsproxy
 
+ARG JAVA_MAJOR
+ARG TARGETARCH
+
+ENV JAVA_HOME="/usr/lib/jvm/java-${JAVA_MAJOR}-openjdk-${TARGETARCH}"
+
 RUN <<'EOF' bash
 set -euo pipefail
 
 mkdir -p /usr/share/ntsproxy /opt/ig-toolbox-meta
 curl -fsSL "${NTS_PROXY_URL}" -o /usr/share/ntsproxy/NTS-proxy.py
+
+# Add mitmproxy certificate
+
+# 1) Run mitmdump once to generate /root/.mitmproxy
+mitmdump & sleep 10
+
+# 2) update keystore
+keytool -noprompt -importcert \
+    -alias mitmproxy \
+    -storepass changeit \
+    -keystore "$JAVA_HOME/lib/security/cacerts" \
+    -trustcacerts \
+    -file /root/.mitmproxy/mitmproxy-ca-cert.pem
 
 TAG="$(mitmproxy --version | cut -d':' -f2 || true)"
 
@@ -302,6 +320,12 @@ COPY --from=validator /usr/share/validator_cli.jar /usr/share/validator_cli.jar
 # Proxy for NTS server
 COPY --from=ntsproxy /usr/share/ntsproxy /usr/share/ntsproxy
 RUN ln -s /usr/share/ntsproxy/ntsproxy.py /usr/bin/ntsproxy.py
+
+USER root
+
+# Copy certs + patched Java truststore into final image
+COPY --from=ntsproxy /root/.mitmproxy /root/.mitmproxy
+COPY --from=ntsproxy $JAVA_HOME/lib/security/cacerts $JAVA_HOME/lib/security/cacerts
 
 
 # Bring in version metadata from each stage
