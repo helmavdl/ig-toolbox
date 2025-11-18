@@ -14,14 +14,14 @@ SUSHI_CONFIG := $(wildcard sushi-config.yaml)
 # Only try to extract info if sushi-config.yaml exists
 ifeq ($(SUSHI_CONFIG),)
  	# No sushi-config
-    VERSION :=
+	VERSION :=
 	PACKAGE_NAME :=
 else
-    # Fetch version from sushi-config.yaml with error handling
-    VERSION := $(shell grep '^version:' sushi-config.yaml | sed 's/version: //' | tr -d '[:space:]')
-    ifeq ($(VERSION),)
-        $(error Could not extract version from sushi-config.yaml)
-    endif
+	# Fetch version from sushi-config.yaml with error handling
+	VERSION := $(shell grep '^version:' sushi-config.yaml | sed 's/version: //' | tr -d '[:space:]')
+	ifeq ($(VERSION),)
+	     $(error Could not extract version from sushi-config.yaml)
+	endif
 	
 	# Fetch package name from sushi-config.yaml with error handling
 	PACKAGE_NAME := $(shell grep '^id:' sushi-config.yaml | sed 's/id: //' | tr -d '[:space:]')
@@ -67,11 +67,12 @@ set-txoption:
 
 # Build package.json
 package.json: 
-	ifeq ($(SUSHI_CONFIG),)
-		@echo $(error no package.json found)
-	else
-		@yq -r -f $(SCRIPTS)/sushi2pkg.yq sushi-config.yaml > package.json
-	endif
+ifeq ($(SUSHI_CONFIG),)
+	@echo "Sushiconfig: " $(SUSHI_CONFIG)
+	@echo $(error no package.json found)
+else
+	@yq -r -f $(SCRIPTS)/sushi2pkg.yq sushi-config.yaml > package.json
+endif
 
 # Restore packages and create fhirpkg.lock.json
 fhirpkg.lock.json: package.json
@@ -100,6 +101,11 @@ install-helper-scripts:
 	@ln -fs $(SCRIPTS)/vval.sh /usr/local/bin/vval
 
 
+# Build a local version of a package and add to fhir cache
+.PHONY: build-local
+build-local: fhirpkg.lock.json package.json
+	@$(SCRIPTS)/build-local.sh
+
 # Build Implementation Guide (Full with documentation)
 .PHONY: build-ig
 build-ig:
@@ -116,18 +122,33 @@ build-ig:
 	@echo "Successfully created: ./output/$(PACKAGE_NAME)-$(VERSION).tgz"
 
 
+# Publish package to Simplifier.net, not tested.
+.PHONY: publish
+publish: build-ig login
+	cd fsh-generated/resources && $(FHIR) bake
+	cd fsh-generated/resources && $(FHIR) pack
+	cd fsh-generated/resources && $(FHIR) publish-package
+
 # Show version
 .PHONY: version
 version:
 	@echo "Version: $(VERSION)"
+	@echo "Package: $(PACKAGE_NAME)" 
+
+
+# ##############################################################
+# remaining Koppeltaal stuff
+# ##############################################################
+
+
 # Build Implementation Guide (Minimal for servers with snapshots)
 # This target creates a minimal FHIR package optimized for FHIR server deployment by:
 # 1. Using SUSHI/IG Publisher to generate resources with snapshots
 # 2. Converting IG Publisher output back to package.json using Python script
 # 3. Stripping only narratives and mappings while keeping snapshots
 # 4. Creating final package without regenerating snapshots
-.PHONY: build-ig-minimal
-build-ig-minimal: install-dependencies build-ig convert-ig-minimal pack-minimal
+.PHONY: build-ig-minimalk
+build-ig-minimalk: install-dependencies build-igk convert-ig-minimal pack-minimal
 
 # Convert ImplementationGuide back to package.json for minimal package using Python script
 .PHONY: convert-ig-minimal
@@ -183,17 +204,6 @@ pack-minimal: login
 	@echo "Final package size: $$(du -h ./output-minimal/koppeltaalv2-$(VERSION)-minimal.tgz | cut -f1)"
 	@echo "Package structure matches working Simplifier format - ready for HAPI FHIR deployment"
 
-# Publish package to Simplifier.net, not tested.
-.PHONY: publish
-publish: build-ig login
-	cd fsh-generated/resources && $(FHIR) bake
-	cd fsh-generated/resources && $(FHIR) pack
-	cd fsh-generated/resources && $(FHIR) publish-package
-
-# Show version
-.PHONY: version
-version:
-	@echo "Version: $(VERSION)"
 
 # Clean target (optional)
 .PHONY: clean
