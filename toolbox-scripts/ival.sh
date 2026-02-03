@@ -72,7 +72,13 @@ PCT_FLAGS=""
 # java ${PCT_FLAGS} ${JVM_FLAGS} -XshowSettings:vm -version 2>&1 | sed -n '1,120p'
 
 # Run the IG Publisher
-java ${PCT_FLAGS} ${JVM_FLAGS} -jar "$JAR_PATH" -ig "$IG_INI" $txoption -rapido $EXTRA_ARGS
+java ${PCT_FLAGS} ${JVM_FLAGS} \
+-Dhttp.proxyHost=localhost \
+-Dhttp.proxyPort=8080 \
+-Dhttp.nonProxyHosts="tx.fhir.org|*.hl7.org|fhir.org" \
+-jar "$JAR_PATH" \
+-ig "$IG_INI" $txoption \
+-rapido $EXTRA_ARGS
 
 end_ts=$(date +%s)
 echo "==> Publisher finished in $((end_ts - start_ts))s"
