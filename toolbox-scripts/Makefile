@@ -1,7 +1,11 @@
 # Makefile for FHIR build process
 
-# location of this Makefile
+# Helps in documenting which scripts to run when
+
+# Absolute directory of this Makefile
 MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+
+# Location of scripts directory
 SCRIPTS := $(MAKEFILE_DIR)
 
 # Variables
@@ -37,36 +41,37 @@ export PACKAGE_NAME
 export PATH := $(PATH):$(DOTNET_TOOLS)
 
 
-# Default target
-.PHONY: all
-all: build
+# Make 'help' the default target
+.DEFAULT_GOAL := help
 
-# init
-.PHONY: init
+# -------------------------------------------------------------------
+# Auto-generated help 
+# -------------------------------------------------------------------
+### General
+.PHONY: help
+help: ## Show this help message
+	@python3 "$(SCRIPTS)/make-help.py" "$(MAKEFILE_DIR)/Makefile"
+
+### FHIR tools
+.PHONY: init 
 init: login install-helper-scripts install-dependencies set-txoption
 
-# Build target (full documentation package)
 .PHONY: build
-build: install-dependencies build-ig
+build: install-dependencies build-ig ## Build IG
 
-# Build minimal package (without narratives)
-.PHONY: build-minimal
-build-minimal: install-dependencies build-ig-minimal
+.PHONY: build-minimal 
+build-minimal: install-dependencies build-ig-minimal ## Build minimal package (without narratives)
 
-# Login to Simplifier
-.PHONY: login
-login:
+.PHONY: login 
+login: ## Login to Simplifier
 	@$(FHIR) login email=$(FIRELY_USERNAME) password=$(FIRELY_PASSWORDD)
 
-# Run the mitmproxy
-.PHONY: set-txoption
-set-txoption:
+.PHONY: set-txoption 
+set-txoption: ## Run the mitmproxy for NTS
 	@echo "Setting the tx option"
 	@$(SCRIPTS)/set-tx-server.sh
 	
-
-# Build package.json
-package.json: 
+package.json: ## Build package.json from sushi-config
 ifeq ($(SUSHI_CONFIG),)
 	@echo "Sushiconfig: " $(SUSHI_CONFIG)
 	@echo $(error no package.json found)
@@ -74,41 +79,36 @@ else
 	@yq -r -f $(SCRIPTS)/sushi2pkg.yq sushi-config.yaml > package.json
 endif
 
-# Restore packages and create fhirpkg.lock.json
-fhirpkg.lock.json: package.json
+fhirpkg.lock.json: package.json ## Restore packages and create fhirpkg.lock.json
 	fhir restore
 
-# Set Firely Terminal to Advanced validator (vnext)
-fvnext:
+
+fvnext: ## Set Firely Terminal to Advanced validator (vnext)
 	fhir config Validator Advanced
 
-# Set Firely Terminal to Regular validator (the old one)
-fvold:
+
+fvold: ## Set Firely Terminal to Regular validator (the old one)
 	fhir config Validator Regular
 
 
-# Install dependencies
-.PHONY: install-dependencies
-install-dependencies: package.json
+.PHONY: install-dependencies 
+install-dependencies: package.json ## Install dependencies
 	@$(SCRIPTS)/install-fhir-dependencies.sh
 
 
-# Symlink helper scripts in /usr/local/bin
 .PHONY: install-helper-scripts
-install-helper-scripts:
+install-helper-scripts: ## Symlink helper scripts in /usr/local/bin
 	@ln -fs $(SCRIPTS)/fval.sh /usr/local/bin/fval
 	@ln -fs $(SCRIPTS)/ival.sh /usr/local/bin/ival
 	@ln -fs $(SCRIPTS)/vval.sh /usr/local/bin/vval
 
 
-# Build a local version of a package and add to fhir cache
-.PHONY: build-local
-build-local: fhirpkg.lock.json package.json
+.PHONY: build-local 
+build-local: fhirpkg.lock.json package.json ## Build a local version of a package and add to fhir cache
 	@$(SCRIPTS)/build-local.sh
 
-# Build Implementation Guide (Full with documentation)
 .PHONY: build-ig
-build-ig:
+build-ig: ## Build Implementation Guide (Full with documentation)
 	@echo "Building Full Implementation Guide of $(PACKAGE_NAME) with version $(VERSION)..."
 	@publisher -ig ig.ini
 # 	@echo "Fixing extension version references..."
@@ -122,19 +122,42 @@ build-ig:
 	@echo "Successfully created: ./output/$(PACKAGE_NAME)-$(VERSION).tgz"
 
 
-# Publish package to Simplifier.net, not tested.
 .PHONY: publish
-publish: build-ig login
+publish: build-ig login ## Publish package to Simplifier.net, not tested.
 	cd fsh-generated/resources && $(FHIR) bake
 	cd fsh-generated/resources && $(FHIR) pack
 	cd fsh-generated/resources && $(FHIR) publish-package
 
-# Show version
 .PHONY: version
-version:
+version: ## Show version
 	@echo "Version: $(VERSION)"
 	@echo "Package: $(PACKAGE_NAME)" 
 
+.PHONY: to-json
+
+# Usage:
+#   make to-json SRC=Patient.xml
+#   make to-json SRC="profiles/*.xml"
+
+to-json: ## convert FHIR resources in XML to JSON
+	@if [ -z "$(SRC)" ]; then \
+		echo "ERROR: Please specify SRC=<file or wildcard>"; \
+		echo "Example: make to-json SRC=Patient.xml"; \
+		echo "         make to-json SRC=\"profiles/*.xml\""; \
+		exit 1; \
+	fi
+	@for f in $(SRC); do \
+		if [ ! -f "$$f" ]; then \
+			echo "Skipping $$f (not a file)"; \
+			continue; \
+		fi; \
+		out="$${f%.xml}.json"; \
+		echo "Converting $$f -> $$out"; \
+		fhir clear >/dev/null 2>&1 || true; \
+		fhir push "$$f"; \
+		fhir save "$$out"; \
+		fhir clear >/dev/null 2>&1 || true; \
+	done
 
 # ##############################################################
 # remaining Koppeltaal stuff
@@ -210,17 +233,7 @@ pack-minimal: login
 clean:
 	@echo "Clean target not implemented - add cleanup commands if needed"
 
-# Help target
-.PHONY: help
-help:
-	@echo "Available targets:"
-	@echo "  build    - Run the complete FHIR build process (full documentation package)"
-	@echo "  build-minimal - Build minimal package with snapshots but without narratives/mappings (for FHIR servers)"
-	@echo "  login    - Login to FHIR registry"
-	@echo "  install-dependencies  - Install FHIR dependencies"
-	@echo "  build-ig - Build Implementation Guide using FHIR publisher (full)"
-	@echo "  build-ig-minimal - Build Implementation Guide using FHIR publisher (minimal)"
-	@echo "  publish  - Publish package to Simplifier.net (requires login)"
-	@echo "  version  - Show the current version from sushi-config.yaml"
-	@echo "  clean    - Clean build artifacts (not implemented)"
-	@echo "  help     - Show this help message"
+show-make: ## Show MAKEFILE paths (for debugging purposes)
+	@echo 'MAKEFILE_LIST='$(MAKEFILE_LIST)
+	@echo 'MAKEFILE_DIR='$(MAKEFILE_DIR)
+	@echo 'SCRIPTS='$(SCRIPTS)
