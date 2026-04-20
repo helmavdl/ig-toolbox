@@ -13,7 +13,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 # ----------------------------------------------------
 ARG JAVA_MAJOR=17
 ARG DOTNET_CHANNEL=8.0
-ARG FIRELY_TERMINAL_VERSION=3.4.0
+ARG FIRELY_TERMINAL_VERSION=3.5.0
 ARG HAPI_CLI_VERSION=8.2.1
 ARG NODE_VERSION=20.17.0
 
@@ -45,11 +45,12 @@ apt-get install -y --no-install-recommends \
   ca-certificates curl gnupg unzip xz-utils \
   jq yq \
   locales git build-essential zlib1g-dev \
-  mitmproxy python3-requests python3-termcolor \
+  mitmproxy python3-requests python3-termcolor python3-pip \
   ruby-full \
   "openjdk-${JAVA_MAJOR}-jre" \
   plantuml graphviz \
-  nginx gettext-base
+  nginx gettext-base \
+  openssh-client rsync
 
   rm -rf /var/lib/apt/lists/*
 EOF
