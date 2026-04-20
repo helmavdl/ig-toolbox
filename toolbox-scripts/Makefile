@@ -132,6 +132,13 @@ build-ig: ## Build Implementation Guide (Full with documentation)
 	@jq --arg pkg "$(PACKAGE_NAME)" 'del(.dependencies[$$pkg])' package.json > package.tmp.json
 	@mv package.tmp.json package.json
 
+.PHONY: deploy deploy-dry-run
+
+deploy: ## deploy IG to server
+	@$(SCRIPTS)/deploy-ig.sh "$(IG_NAME)"
+
+deploy-dry-run: ## deploy IG to server (dry-run)
+	@DRY_RUN=true $(SCRIPTS)/deploy-ig.sh "$(IG_NAME)"
 
 .PHONY: publish
 publish: build-ig login ## Publish package to Simplifier.net, not tested.
