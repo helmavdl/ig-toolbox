@@ -105,6 +105,10 @@ install-helper-scripts: ## Symlink helper scripts in /usr/local/bin
 	@ln -fs $(SCRIPTS)/vval.sh /usr/local/bin/vval
 
 
+.PHONY: inflate-nictiz
+inflate-nictiz: ## inflate Nictiz packages so they will contain snapshots
+	@$(SCRIPTS)/inflate_nictiz-packages.sh
+
 ### Building
 .PHONY: build-local 
 build-local: fhirpkg.lock.json package.json ## Build a local version of a package and add to fhir cache
@@ -131,10 +135,7 @@ publish: build-ig login ## Publish package to Simplifier.net, not tested.
 	cd fsh-generated/resources && $(FHIR) pack
 	cd fsh-generated/resources && $(FHIR) publish-package
 
-.PHONY: version
-version: ## Show version
-	@echo "Version: $(VERSION)"
-	@echo "Package: $(PACKAGE_NAME)" 
+
 ### Helpers
 
 .PHONY: to-json
@@ -162,6 +163,11 @@ to-json: ## convert FHIR resources in XML to JSON
 		fhir save "$$out"; \
 		fhir clear >/dev/null 2>&1 || true; \
 	done
+
+.PHONY: version
+version: ## Show version
+	@echo "Version: $(VERSION)"
+	@echo "Package: $(PACKAGE_NAME)" 
 
 # ##############################################################
 # remaining Koppeltaal stuff
