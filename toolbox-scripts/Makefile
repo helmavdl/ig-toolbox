@@ -57,7 +57,7 @@ help: ## Show this help message
 init: login install-helper-scripts install-dependencies set-txoption
 
 .PHONY: build
-build: install-dependencies build-ig ## Build IG
+build: install-dependencies build-ig ## Build IG (with dependencies install)
 
 .PHONY: build-minimal 
 build-minimal: install-dependencies build-ig-minimal ## Build minimal package (without narratives)
@@ -83,6 +83,7 @@ fhirpkg.lock.json: package.json ## Restore packages and create fhirpkg.lock.json
 	fhir restore
 
 
+### Validators
 fvnext: ## Set Firely Terminal to Advanced validator (vnext)
 	fhir config Validator Advanced
 
@@ -91,6 +92,7 @@ fvold: ## Set Firely Terminal to Regular validator (the old one)
 	fhir config Validator Regular
 
 
+### Helpers
 .PHONY: install-dependencies 
 install-dependencies: package.json ## Install dependencies
 	@$(SCRIPTS)/install-fhir-dependencies.sh
@@ -103,6 +105,7 @@ install-helper-scripts: ## Symlink helper scripts in /usr/local/bin
 	@ln -fs $(SCRIPTS)/vval.sh /usr/local/bin/vval
 
 
+### Building
 .PHONY: build-local 
 build-local: fhirpkg.lock.json package.json ## Build a local version of a package and add to fhir cache
 	@$(SCRIPTS)/build-local.sh
@@ -132,6 +135,7 @@ publish: build-ig login ## Publish package to Simplifier.net, not tested.
 version: ## Show version
 	@echo "Version: $(VERSION)"
 	@echo "Package: $(PACKAGE_NAME)" 
+### Helpers
 
 .PHONY: to-json
 
