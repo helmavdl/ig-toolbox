@@ -127,6 +127,10 @@ build-ig: ## Build Implementation Guide (Full with documentation)
 	@echo "Copying package.tgz to: ./output/$(PACKAGE_NAME)-$(VERSION).tgz"
 	@cp ./output/package.tgz ./output/$(PACKAGE_NAME)-$(VERSION).tgz
 	@echo "Successfully created: ./output/$(PACKAGE_NAME)-$(VERSION).tgz"
+	@fhir install ./output/$(PACKAGE_NAME)-$(VERSION).tgz --file
+	@echo "Removing circular references in package.json"
+	@jq --arg pkg "$(PACKAGE_NAME)" 'del(.dependencies[$$pkg])' package.json > package.tmp.json
+	@mv package.tmp.json package.json
 
 
 .PHONY: publish
