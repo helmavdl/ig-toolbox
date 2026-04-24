@@ -9,26 +9,33 @@ services:
     ports:
       - "${PORT_BIND:-8080}:80"
 
+    mem_limit: 16g
+    
     environment:
       LANG: "en_US.UTF-8"
       LC_ALL: "en_US.UTF-8"
       TZ: ${TZ:-Europe/Amsterdam}
-      
-      # Pass-through env vars: if set on the host (or via op run), they appear
-      # in the container; if not set, they’re simply empty with no warnings.
+      SSH_AUTH_SOCK: /run/host-services/ssh-auth.sock
+      TARGET_HOST: ${TARGET_HOST}
+      TARGET_USER: ${TARGET_USER}
       FIRELY_USERNAME:
       FIRELY_PASSWORD:
       NTS_USER:
       NTS_PASS:
-      
-    volumes:
-      # Mount the project directory, adjust this to match the project layout
-      - ./projects:/workspaces
-      
-      # Mount toolbox scripts from the ig-toolbox repo (read-only)
-      - ${TOOLBOX_SCRIPTS}:/workspaces/scripts:ro
+      USE_NTS:
 
+    volumes:
+      - .:/workspaces
+      - ${TOOLBOX_SCRIPTS}:/workspaces/scripts:ro
+      - ./output:/host_output            # host output dir (target for the copy-back)
+      - type: bind
+        source: /run/host-services/ssh-auth.sock
+        target: /run/host-services/ssh-auth.sock
+      - ${SSH_AUTH_SOCK}:/ssh-agent
+
+    tmpfs:
+      - /workspaces/output:size=2g,noexec,nosuid
+      - /workspaces/temp:size=1g,noexec,nosuid
+      - /tmp:rw,exec,nosuid,nodev,size=1024m
     stdin_open: true
     tty: true
-
-    restart: "no"
