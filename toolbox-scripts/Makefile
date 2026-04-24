@@ -12,6 +12,14 @@ SCRIPTS := $(MAKEFILE_DIR)
 FHIR := fhir
 DOTNET_TOOLS := $(HOME)/.dotnet/tools
 
+# ---------------------------
+# Variables for FHIR IG and sushi
+# ---------------------------
+
+ifndef IG_NAME
+$(error IG_NAME is not set by the project Makefile)
+endif
+
 # Detect whether this is a FSH/SUSHI environment
 SUSHI_CONFIG := $(wildcard sushi-config.yaml)
 
