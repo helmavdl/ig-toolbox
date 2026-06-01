@@ -40,7 +40,7 @@ if [[ $USE_NTS == "y" || $USE_NTS == "Y" ]]; then
 	echo "Starting proxy for the Nationale Terminologieserver"
 	# export NTS_USER
 	# export NTS_PASS
-	mitmdump -s /usr/share/ntsproxy/NTS-proxy.py > /dev/null &
+	mitmdump -s /usr/share/ntsproxy/NTS-proxy.py > /tmp/mitmdump.log &
 	echo $! > $PIDFILE
 	sleep 3s
 	curl_line="--proxy http://localhost:8080 http://terminologieserver.nl/fhir/metadata"
@@ -49,11 +49,21 @@ else
 fi
 
 echo Checking internet connection...
+NTS_TOKEN=""
 curl -sSf $curl_line > /dev/null
 if [ $? -eq 0 ]; then
     if [[ $USE_NTS == "y" || $USE_NTS == "Y" ]]; then
 		echo "Using the Nationale Terminologieserver"
 		txoption="-proxy localhost:8080 -tx http://terminologieserver.nl/fhir"
+		NTS_TOKEN=$(curl -s -X POST \
+			'https://terminologieserver.nl/auth/realms/nictiz/protocol/openid-connect/token' \
+			--data-urlencode "grant_type=password" \
+			--data-urlencode "client_id=cli_client" \
+			--data-urlencode "client_secret=" \
+			--data-urlencode "username=${NTS_USER}" \
+			--data-urlencode "password=${NTS_PASS}" \
+			| python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+		
 	else
 		echo "Using the default terminology server (tx.fhir.org)"
 		txoption=""
@@ -64,3 +74,4 @@ else
 fi
 
 echo $txoption > $HOME/.txoption
+echo $NTS_TOKEN > $HOME/.nts-token

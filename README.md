@@ -211,8 +211,8 @@ Inside the container shell, your IG projects live under `/workspaces/projects`:
 
 ```bash
 cd /workspaces/projects/my-first-ig
-sushi .                  # compile FSH → FHIR
-./_genonce.sh            # run the IG Publisher
+sushi .               # compile FSH → FHIR
+make build            # run the IG Publisher
 ```
 
 Then open <http://localhost:8080/> (or whatever port `igctl start` reported)
@@ -242,6 +242,65 @@ If you use the 1Password CLI (`op`), copy
 [`env.op.example`](env.op.example) into your workspace as `.env.op` and fill
 in your vault references. `igctl start` will detect `op` and inject secrets at
 runtime — they never touch disk.
+
+### Using the Nationale Terminologieserver (NTS)
+
+The Dutch *Nationale Terminologieserver* (NTS, run by Nictiz) is the
+authoritative terminology server for Dutch FHIR profiles. Validation and
+publishing default to `tx.fhir.org`; switch to NTS when your IG uses
+ValueSets/CodeSystems that only live there.
+
+**How it works.** The image ships an [mitmproxy](https://mitmproxy.org)-based
+NTS proxy (`/usr/share/ntsproxy/NTS-proxy.py`) plus a helper script
+`set-tx-server.sh`. The script:
+
+1. Starts `mitmdump` on `localhost:8080` inside the container (only if
+   `USE_NTS=y`).
+2. Fetches an OAuth token from terminologieserver.nl using your NTS account.
+3. Writes `~/.txoption` and `~/.nts-token`, which the validators
+   (`ival.sh`, `vval.sh`, `validate-fhir-bare.sh`) read automatically.
+
+**1. Get NTS credentials.** Register an account at
+<https://terminologieserver.nl/> if you don't already have one.
+
+**2. Set the env vars on the host.** Either in your workspace `.env`:
+```bash
+USE_NTS=y
+NTS_USER=you@example.org
+NTS_PASS=your-nts-password
+```
+…or via 1Password in `.env.op` (see [`env.op.example`](env.op.example)) — that
+keeps the password out of plaintext files.
+
+Set `USE_NTS=n` (or leave it unset) to fall back to `tx.fhir.org` and skip the
+proxy entirely.
+
+**3. Restart the container** so the new env vars are picked up:
+```bash
+igctl restart
+```
+
+**4. Activate the proxy inside the container.** Once inside:
+```bash
+cd /workspaces/projects/my-first-ig
+make set-txoption
+# or directly:
+bash /workspaces/scripts/set-tx-server.sh
+```
+
+You should see `Starting proxy for the Nationale Terminologieserver` followed
+by `Using the Nationale Terminologieserver`. After this, any subsequent
+`make build`, `ival.sh`, `vval.sh` or `validate-fhir-bare.sh` run in this
+shell uses NTS automatically. The proxy logs to `/tmp/mitmdump.log`.
+
+**5. To switch back to `tx.fhir.org`** — set `USE_NTS=n` in `.env`,
+`igctl restart`, and re-run `make set-txoption`. The script kills the running
+`mitmdump` and rewrites `~/.txoption`.
+
+> **Note:** The proxy runs *per container shell session*. If you exit and the
+> container keeps running, the proxy stays up (its PID is in
+> `/tmp/mitmdump.pid`). On `igctl restart` the container is fresh and you need
+> to run `make set-txoption` again.
 
 ---
 

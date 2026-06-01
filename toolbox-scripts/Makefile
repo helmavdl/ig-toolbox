@@ -125,7 +125,7 @@ build-local: fhirpkg.lock.json package.json ## Build a local version of a packag
 .PHONY: build-ig
 build-ig: ## Build Implementation Guide (Full with documentation)
 	@echo "Building Full Implementation Guide of $(PACKAGE_NAME) with version $(VERSION)..."
-	@publisher -ig ig.ini
+	@publisher -ig ig.ini $(shell cat ~/.txoption)
 # 	@echo "Fixing extension version references..."
 # 	@python3 scripts/fix_extension_versions.py output
 	@if [ ! -f ./output/package.tgz ]; then \
