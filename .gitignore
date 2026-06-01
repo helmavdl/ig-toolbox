@@ -2,3 +2,19 @@
 *.logs
 _archive/
 .vscode
+
+# Local secrets / overrides
+# Note: .env is tracked because it pins non-secret build versions and IMAGE_NAME.
+# Put any local overrides in .env.local; put 1Password references in .env.op.
+.env.op
+.env.local
+
+# igctl per-directory state
+.igctl
+
+# Local docker-compose override
+docker-compose.override.yml
+
+# Build/output dirs
+projects/
+output/
