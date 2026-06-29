@@ -122,8 +122,12 @@ inflate-nictiz: ## inflate Nictiz packages so they will contain snapshots
 build-local: fhirpkg.lock.json package.json ## Build a local version of a package and add to fhir cache
 	@$(SCRIPTS)/build-local.sh
 
+.PHONY: sync-version
+sync-version: ## Sync the version alias in aliases.fsh to sushi-config.yaml
+	@$(SCRIPTS)/sync-version.sh
+
 .PHONY: build-ig
-build-ig: ## Build Implementation Guide (Full with documentation)
+build-ig: sync-version ## Build Implementation Guide (Full with documentation)
 	@echo "Building Full Implementation Guide of $(PACKAGE_NAME) with version $(VERSION)..."
 	@publisher -ig ig.ini $(shell cat ~/.txoption)
 # 	@echo "Fixing extension version references..."
@@ -148,12 +152,28 @@ deploy: ## deploy IG to server
 deploy-dry-run: ## deploy IG to server (dry-run)
 	@DRY_RUN=true $(SCRIPTS)/deploy-ig.sh "$(IG_NAME)"
 
-.PHONY: publish
-publish: build-ig login ## Publish package to Simplifier.net, not tested.
-	cd fsh-generated/resources && $(FHIR) bake
-	cd fsh-generated/resources && $(FHIR) pack
-	cd fsh-generated/resources && $(FHIR) publish-package
+.PHONY: release-notes
+release-notes: ## Generate release notes (git-cliff) into releasenotes.md
+	@if git describe --tags --exact-match HEAD >/dev/null 2>&1; then \
+	  git-cliff --latest -o releasenotes.md; \
+	else \
+	  git-cliff --unreleased --tag "$(VERSION)" -o releasenotes.md; \
+	fi
+	@echo "Release notes -> releasenotes.md"
 
+.PHONY: check-version
+check-version: ## Fail if version differs across sushi-config.yaml, package.json and the version alias
+	@$(SCRIPTS)/check-version.sh
+
+.PHONY: release-check
+release-check: build check-version release-notes ## Pre-flight: build + verify versions + notes (NO publish)
+	@echo "Release pre-flight OK. Review output/qa.html and releasenotes.md, then run 'make publish'."
+
+.PHONY: publish
+publish: login check-version release-notes ## Publish package to Simplifier.net
+	@echo this task assumes you have run build-ig
+	@$(FHIR) publish-package output/package.tgz
+	@echo "Published. Paste releasenotes.md into the package version page on Simplifier."
 
 ### Helpers
 

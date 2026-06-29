@@ -16,6 +16,7 @@ ARG DOTNET_CHANNEL=8.0
 ARG FIRELY_TERMINAL_VERSION=3.5.0
 ARG HAPI_CLI_VERSION=8.2.1
 ARG NODE_VERSION=20.17.0
+ARG GIT_CLIFF_VERSION=2.13.1
 
 # BuildKit provides these automatically; keep them declared for clarity
 ARG TARGETPLATFORM
@@ -31,6 +32,9 @@ ENV FHIR_VALIDATOR_LATEST="https://github.com/hapifhir/org.hl7.fhir.core/release
 ENV DOTNET_INSTALLER_URL="https://dot.net/v1/dotnet-install.sh"
 ENV NTS_PROXY_URL="https://raw.githubusercontent.com/Nictiz/snippets/refs/heads/main/NTS-proxy/NTS-proxy.py"
 ENV HAPI_CLI_URL="https://github.com/hapifhir/hapi-fhir/releases/download/v${HAPI_CLI_VERSION}/hapi-fhir-${HAPI_CLI_VERSION}-cli.zip"
+
+# git-cliff: use the shared config mounted from toolbox-scripts (override per-repo with --config)
+ENV GIT_CLIFF_CONFIG=/workspaces/scripts/cliff.toml
 
 # ----------------------------------------------------
 # Base OS deps (arch-agnostic)
@@ -269,6 +273,35 @@ echo "RESOLVED_MITMPROXY_TAG=${TAG}" >> /opt/ig-toolbox-meta/mitmproxy.env
 EOF
 
 # ----------------------------------------------------
+# git-cliff stage (changelog generator, pinned binary)
+# ----------------------------------------------------
+FROM base AS gitcliff
+
+ARG GIT_CLIFF_VERSION
+ARG TARGETARCH
+
+RUN <<'EOF' bash
+set -euo pipefail
+
+case "${TARGETARCH:-amd64}" in
+  amd64) ARCH="x86_64" ;;
+  arm64) ARCH="aarch64" ;;
+  *) echo "Unsupported TARGETARCH: ${TARGETARCH}" >&2; exit 1 ;;
+esac
+
+URL="https://github.com/orhun/git-cliff/releases/download/v${GIT_CLIFF_VERSION}/git-cliff-${GIT_CLIFF_VERSION}-${ARCH}-unknown-linux-gnu.tar.gz"
+
+curl -fsSL "${URL}" -o /tmp/git-cliff.tgz
+tar -xzf /tmp/git-cliff.tgz -C /usr/local/bin --strip-components=1 --wildcards '*/git-cliff'
+rm -f /tmp/git-cliff.tgz
+
+mkdir -p /opt/ig-toolbox-meta
+echo "RESOLVED_GIT_CLIFF_VERSION=${GIT_CLIFF_VERSION}" >> /opt/ig-toolbox-meta/gitcliff.env
+
+git-cliff --version
+EOF
+
+# ----------------------------------------------------
 # Final image: assemble tools, add scripts
 # ----------------------------------------------------
 FROM base AS final
@@ -280,6 +313,7 @@ ARG FIRELY_TERMINAL_VERSION
 ARG HAPI_CLI_VERSION
 ARG JAVA_MAJOR
 ARG TARGETARCH
+ARG GIT_CLIFF_VERSION
 
 # ----------------------------------------------------
 # Java (multi-arch JAVA_HOME) & IG Publisher tuning
@@ -322,6 +356,9 @@ COPY --from=validator /usr/share/validator_cli.jar /usr/share/validator_cli.jar
 COPY --from=ntsproxy /usr/share/ntsproxy /usr/share/ntsproxy
 RUN ln -s /usr/share/ntsproxy/ntsproxy.py /usr/bin/ntsproxy.py
 
+# git-cliff
+COPY --from=gitcliff /usr/local/bin/git-cliff /usr/local/bin/git-cliff
+
 USER root
 
 # Copy certs + patched Java truststore into final image
@@ -336,6 +373,8 @@ COPY --from=hapi        /opt/ig-toolbox-meta/hapi.env        /opt/ig-toolbox-met
 COPY --from=igpublisher /opt/ig-toolbox-meta/igpublisher.env /opt/ig-toolbox-meta/igpublisher.env
 COPY --from=validator   /opt/ig-toolbox-meta/validator.env   /opt/ig-toolbox-meta/validator.env
 COPY --from=ntsproxy    /opt/ig-toolbox-meta/mitmproxy.env   /opt/ig-toolbox-meta/mitmproxy.env
+COPY --from=gitcliff    /opt/ig-toolbox-meta/gitcliff.env    /opt/ig-toolbox-meta/gitcliff.env
+
 
 # Merge them into /etc/environment once
 RUN <<'EOF' bash
@@ -397,4 +436,5 @@ LABEL org.opencontainers.image.title="ig-toolbox" \
       ig.toolbox.node.version="${NODE_VERSION}" \
       ig.toolbox.dotnet.channel="${DOTNET_CHANNEL}" \
       ig.toolbox.firely.terminal.version="${FIRELY_TERMINAL_VERSION}" \
-      ig.toolbox.hapi.cli.version="${HAPI_CLI_VERSION}"
+      ig.toolbox.hapi.cli.version="${HAPI_CLI_VERSION}" \
+      ig.toolbox.git.cliff.version="${GIT_CLIFF_VERSION}"

@@ -1,0 +1,55 @@
+# Shared git-cliff config for all ig-toolbox containers.
+# Keep a Changelog-ish output from Conventional Commits; internal commit
+# types (chore/ci/build/test/style) are dropped so release notes only show
+# what's relevant to package consumers.
+
+[changelog]
+header = """
+# Changelog
+
+All notable changes to this project will be documented in this file.
+"""
+body = """
+{% if version %}\
+    ## [{{ version | trim_start_matches(pat="v") }}] - {{ timestamp | date(format="%Y-%m-%d") }}
+{% else %}\
+    ## [unreleased]
+{% endif %}\
+{% for group, commits in commits | group_by(attribute="group") %}
+    ### {{ group | striptags | trim | upper_first }}
+    {% for commit in commits %}
+        - {% if commit.scope %}*({{ commit.scope }})* {% endif %}\
+          {% if commit.breaking %}[**breaking**] {% endif %}\
+          {{ commit.message | upper_first }}\
+    {% endfor %}
+{% endfor %}
+"""
+trim = true
+footer = ""
+
+[git]
+conventional_commits  = true
+filter_unconventional = true   # ignore commits that aren't "type: subject"
+filter_commits        = true   # ALSO drop conventional commits that match no kept group
+protect_breaking_commits = true
+tag_pattern  = "v[0-9].*"
+sort_commits = "oldest"
+
+commit_parsers = [
+  # --- kept: shown to readers (ordering via the <!-- N --> prefixes) ---
+  { message = "^Merge",    skip = true },                         # silently drop merge commits
+  { message = "^feat",     group = "<!-- 0 -->🚀 Features" },
+  { message = "^fix",      group = "<!-- 1 -->🐛 Bug Fixes" },
+  { message = "^perf",     group = "<!-- 2 -->⚡ Performance" },
+  { message = "^refactor", group = "<!-- 3 -->🚜 Refactor" },     # move to skip if you consider it internal
+  { message = "^docs?",    group = "<!-- 4 -->📚 Documentation" },
+  { body    = ".*security",group = "<!-- 5 -->🛡️ Security" },
+  { message = "^revert",   group = "<!-- 6 -->◀️ Revert" },
+
+  # --- skipped: internal nitty-gritty, never reaches the package ---
+  { message = "^chore", skip = true },
+  { message = "^ci",    skip = true },
+  { message = "^build", skip = true },
+  { message = "^test",  skip = true },
+  { message = "^style", skip = true },
+]
